@@ -1,7 +1,8 @@
-import React from 'react'
+"use client"
+
+import React, { useActionState, useEffect } from 'react'
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -9,71 +10,95 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { FcGoogle as GoogleIcon } from 'react-icons/fc'
-import { FaGithub as GithubIcon } from 'react-icons/fa'
+import { FormField } from '@/components/form-field'
+import SocialAuthButtons from '@/components/socialauth-buttons'
+import { loginUser, type LoginActionState } from '../actions'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
+const initialState: LoginActionState = null
+
+const getFieldError = (
+  state: LoginActionState,
+  field: 'email' | 'password'
+): string | undefined => state?.error?.properties?.[field]?.errors?.[0]
 
 const LoginForm = () => {
+  const router = useRouter()
+  const [state, formAction, isPending] = useActionState(loginUser, initialState)
+
+  useEffect(() => {
+    if (!state) return
+
+    if (state.success) {
+      toast.success('Logged in', {
+        description: state.success,
+      })
+      router.push('/onboarding')
+    }
+
+    if (state.error?.message) {
+      toast.error('Login failed', {
+        description: state.error.message,
+      })
+    }
+  }, [state, router])
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
+        <CardTitle className='text-2xl'>Welcome back</CardTitle>
         <CardDescription>
-          Enter your email below to login to your account
+          Sign in to continue where you left off.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form>
+        <form action={formAction}>
           <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="xyz@example.com"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-              </div>
-              <Input id="password" type="password" required />
+            <FormField
+              id="email"
+              name="email"
+              label="Email"
+              type="email"
+              placeholder="xyz@example.com"
+              defaultValue={state?.values?.email}
+              error={getFieldError(state, 'email')}
+              required
+            />
+
+            <FormField
+              id="password"
+              name="password"
+              label="Password"
+              type="password"
+              error={getFieldError(state, 'password')}
+              required
+            >
               <a
-                  href="#"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline mt-1"
-                >
-                  Forgot your password?
-                </a>
-            </div>
+                href="#"
+                className="ml-auto inline-block text-sm underline-offset-4 hover:underline mt-1"
+              >
+                Forgot your password?
+              </a>
+            </FormField>
           </div>
+          <Button type="submit" className="w-full mt-6" disabled={isPending}>
+            {isPending ? 'Logging in...' : 'Login'}
+        </Button>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full">
-          Login
-        </Button>
-        <div className='flex justify-center items-center gap-2 my-3 overflow-hidden w-full'>
+        <div className='flex justify-center items-center gap-2 mb-3 overflow-hidden w-full'>
           <Separator />
           <p className='text-muted-foreground text-xs'>OR</p>
           <Separator />
         </div>
-        {/* <Button variant="outline" className="w-full">
-          Login with Google
-        </Button> */}
-        <Button variant="outline" className="w-full gap-2">
-          <GoogleIcon /> Log in with Google
-        </Button>
-        <Button variant="outline" className="w-full gap-2">
-          <GithubIcon /> Log in with GitHub
-        </Button>
+        <SocialAuthButtons />
         <div className="text-center text-sm mt-5">
           <p>
             Don't have an account?{'   '}
-            <a href="#" className=" ml-1text-primary underline-offset-4 hover:underline font-semibold">
+            <a href="/register" className=" ml-1 text-primary underline-offset-4 hover:underline font-semibold">
               Sign up for free
             </a>
           </p>
