@@ -33,12 +33,34 @@ const SocialAuthButtons = () => {
     setIsLoading(false);
   }
 
+  const signInWithGithub = async () => {
+    const supabase = await createClient();
+    const URL = `${window.location.origin}/api/auth/callback`
+
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: URL,
+      }
+    })  
+
+    if (error) {
+      toast.error('Error during GitHub OAuth sign-in');
+    } else {
+      toast.success('Redirecting to GitHub for authentication...');
+    }
+
+    setIsLoading(false);
+  }
+
   return (
     <>
       <Button variant="outline" className="w-full gap-2" onClick={signInWithGoogle}>
           <GoogleIcon /> Continue with Google
       </Button>
-      <Button variant="outline" className="w-full gap-2 mt-2">
+      <Button variant="outline" className="w-full gap-2 mt-2" onClick={signInWithGithub}>
         <GithubIcon /> Continue with GitHub
       </Button>
     </>
