@@ -1,16 +1,26 @@
 import React from 'react'
 import {
   Card,
-  CardAction,
   CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Check } from 'lucide-react'
+import { Metadata } from 'next'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
-const page = () => {
+export const metadata: Metadata = {
+  title: 'Confirm Your Email',
+  description: 'We have sent you a confirmation link to your email address.',
+}
+
+const page = async () => {
+  const cookieStore = await cookies()
+  const signupComplete = cookieStore.get('signup_complete')
+
+  if (!signupComplete) {
+    redirect('/register')
+  }
+
   return (
     <div className='flex items-center justify-center min-h-screen'>
       <Card className="w-full max-w-md">

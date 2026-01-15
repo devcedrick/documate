@@ -5,6 +5,7 @@ import { registerSchema } from '@/schema/register'
 import { z } from 'zod'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 
 export type ActionState = {
   error?: {
@@ -76,9 +77,15 @@ export async function createAccount(prevState: ActionState, formData: FormData):
   }
 
   if (!data.session) {
-    return { success: "Please check your email to confirm your account." };
+    (await cookies()).set('signup_complete', 'true', {
+      path: '/',
+      httpOnly: true,
+      maxAge: 300
+    })
+
+    redirect('/confirm');
   }
 
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
+  revalidatePath("/home", "layout");
+  redirect("/home");
 }
