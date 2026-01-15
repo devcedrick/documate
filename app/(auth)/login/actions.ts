@@ -5,6 +5,7 @@ import { loginSchema } from '@/schema/login'
 import { z } from 'zod'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { resendConfirmation } from '@/app/(auth)/actions'
 
 export type LoginActionState = {
   error?: {
@@ -16,6 +17,7 @@ export type LoginActionState = {
     message?: string;
   };
   success?: string;
+  needsConfirmation?: boolean;
   values?: {
     email?: string;
   };
@@ -48,6 +50,19 @@ export async function loginUser(prevState: LoginActionState, formData: FormData)
   });
 
   if (error) {
+    if (error.message.includes("Email not confirmed")) {
+      const resendResult = await resendConfirmation(validated.data.email);
+
+      if (resendResult.error) {
+        return {
+          error: { message: resendResult.error },
+          values: {
+            email: rawData.email,
+          }
+        }
+      }
+    }
+
     return {
       error: {
         message: error.message,
@@ -59,6 +74,6 @@ export async function loginUser(prevState: LoginActionState, formData: FormData)
   }
 
   // On successful login
-  revalidatePath('/onboarding');
-  return { success: 'Login successful. Redirecting…' };
+  revalidatePath('/', 'layout');  
+  redirect('/onboarding');
 }
