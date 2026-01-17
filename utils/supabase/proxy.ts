@@ -31,19 +31,46 @@ export async function updateSession(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/register') &&
-    !request.nextUrl.pathname.startsWith('/api/auth/callback') &&
-    !request.nextUrl.pathname.startsWith('/confirm') &&
-    !request.nextUrl.pathname.startsWith('/forgot-password') &&
-    !request.nextUrl.pathname.startsWith('/update-password')
-  ) {
+
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/login',
+    '/register',
+    '/api/auth/callback',
+    '/confirm',
+    '/forgot-password',
+    '/update-password',
+  ]
+
+  const isPublicRoute = publicRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
+  )
+
+  if (!user && !isPublicRoute) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
+  }
+
+  // Onboarding flow logic for authenticated users
+  if (user) {
+    const hasCompletedOnboarding = user.user_metadata?.hasCompletedOnboarding === true
+    const isOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding')
+
+    // User hasn't completed onboarding and is not on the onboarding page
+    if (!hasCompletedOnboarding && !isOnboardingPage && !isPublicRoute) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
+      return NextResponse.redirect(url)
+    }
+
+    // User has completed onboarding but is trying to access the onboarding page
+    if (hasCompletedOnboarding && isOnboardingPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/chat'
+      return NextResponse.redirect(url)
+    }
   }
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
   // creating a new response object with NextResponse.next() make sure to:
