@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   description: 'This is an onboarding page for new users.',
 }
 
+export interface InitialData {
+  firstName: string;
+  lastName: string;
+}
+
 export default async function Page() {
   const supabase = await createClient();
   
@@ -17,7 +22,7 @@ export default async function Page() {
   }
 
   // Pre-fill data from user metadata if available
-  const initialData = {
+  const initialData: InitialData = {
     firstName: user.user_metadata?.first_name || '',
     lastName: user.user_metadata?.last_name || '',
   };

@@ -19,9 +19,10 @@ import ResponsePreferenceForm from './steps/step-response'
 import StrictnessLevelForm from './steps/step-strictness'
 import { completeOnboarding, OnboardingActionState } from '../actions'
 import { toast } from 'sonner'
+import { InitialData } from '../page'
 
 
-const OnboardingContainer = ({initialData}: {initialData: any}) => {
+const OnboardingContainer = ({initialData}: {initialData: InitialData}) => {
   const [step, setStep] = useState(1);
   const totalStep = 4;
   const progress = (step / totalStep) * 100;
@@ -56,11 +57,11 @@ const OnboardingContainer = ({initialData}: {initialData: any}) => {
   const canNavigateNext = (): boolean => {
     switch (step) {
       case 1:
-        return formData.firstName.trim() && formData.lastName.trim();
+        return formData.firstName.trim().length > 0 && formData.lastName.trim().length > 0;
       case 2:
         return formData.useCase !== '';
       default:
-        return false;
+        return true;
     }
   }
 

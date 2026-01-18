@@ -68,7 +68,7 @@ export async function updateSession(request: NextRequest) {
     // User has completed onboarding but is trying to access the onboarding page
     if (hasCompletedOnboarding && isOnboardingPage) {
       const url = request.nextUrl.clone()
-      url.pathname = '/chat'
+      url.pathname = '/c'
       return NextResponse.redirect(url)
     }
   }

@@ -81,19 +81,31 @@ export async function completeOnboarding(
     };
   }
 
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  
+  if (refreshError) {
+    console.error('Failed to refresh session:', refreshError);
+  }
+
   const { error: updateError } = await supabase
     .from('user_profiles')
-    .update({
+    .upsert({
+      id: user.id,
       first_name: validated.data.firstName,
       last_name: validated.data.lastName,
       has_completed_onboarding: true,
       use_case: validated.data.useCase,
       response_preference: validated.data.responsePreference,
       strictness_level: validated.data.strictnessLevel,
+    }, {
+      onConflict: 'id'
     })
-    .eq('id', user.id)
 
   if (updateError) {
+    await supabase.auth.updateUser({
+      data: { hasCompletedOnboarding: false },
+    });
+    
     return {
       error: {
         message: updateError.message || 'Failed to save your preferences. Please try again.',
