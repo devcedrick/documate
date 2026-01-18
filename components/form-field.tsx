@@ -7,7 +7,9 @@ export type FormFieldProps = {
   name: string
   label: string
   type?: React.HTMLInputTypeAttribute
+  value?: string
   placeholder?: string
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
   error?: string
   required?: boolean
   disabled?: boolean
@@ -21,7 +23,9 @@ export const FormField = ({
   name,
   label,
   type = 'text',
+  value,
   placeholder,
+  onChange,
   error,
   required = false,
   disabled = false,
@@ -39,7 +43,9 @@ export const FormField = ({
       name={name}
       type={type}
       placeholder={placeholder}
+      onChange={onChange}
       disabled={disabled}
+      value={value}
       defaultValue={defaultValue}
       className={cn(error && 'border-destructive')}
     />
