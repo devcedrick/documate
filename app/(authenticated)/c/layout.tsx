@@ -9,8 +9,8 @@ export default function ChatLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main>
-        <header></header>
+      <main className="flex-1 flex flex-col min-h-dvh max-h-dvh p-5">
+        <header>This is the header part</header>
         {children}
       </main>
     </SidebarProvider>
