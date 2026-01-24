@@ -37,7 +37,7 @@ export default function DocumentPreview({ doc, onDelete }: DocumentPreviewProps)
         type="button"
         onClick={handleDelete}
         disabled={isDeleting}
-        className="absolute -top-2 -right-2 p-1 bg-destructive/50 text-destructive-foreground rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-destructive/90 disabled:opacity-50"
+        className="absolute -top-2 -right-2 p-1 bg-destructive/50 text-destructive-foreground rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-destructive/80 disabled:opacity-50"
         aria-label="Delete file"
       >
         {isDeleting ? (
@@ -49,7 +49,7 @@ export default function DocumentPreview({ doc, onDelete }: DocumentPreviewProps)
       <FileText className="h-8 w-8 text-muted-foreground shrink-0" />
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <p className="text-sm font-medium truncate">{doc.file_name}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground truncate">
           {(doc.file_size / (1024 * 1024)).toFixed(2)} MB
         </p>
       </div>

@@ -1,20 +1,65 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import UploadZone from './_components/upload-zone'
 import DocumentPreview from './_components/document-preview'
-import { useState } from 'react'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
+import { deleteDocument } from './actions'
 
-const page = () => {
-  const [uploadedDoc, setUploadedDoc] = useState(null)
+interface UploadedDocument {
+  id: string
+  file_name: string
+  file_path: string
+  file_size: number
+  [key: string]: unknown
+}
+
+const Page = () => {
+  const [uploadedDoc, setUploadedDoc] = useState<UploadedDocument | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Warn user before refreshing/leaving if a file is uploaded
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (uploadedDoc) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [uploadedDoc])
+
+  if (!isMounted) {
+    return (
+      <div className='flex items-center justify-center w-full h-full'>
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
 
 return (
   <div className='flex items-center justify-center w-full h-full'>
     {uploadedDoc ? (
-      <DocumentPreview 
-        doc={uploadedDoc} 
-        onDelete={() => setUploadedDoc(null)} 
-      />
+      <ResizablePanelGroup className='border-2 rounded-lg p-3'>
+        <ResizablePanel defaultSize={300} minSize={250} maxSize={500} className='p-3'>
+          <DocumentPreview 
+            doc={uploadedDoc} 
+            onDelete={() => setUploadedDoc(null)} 
+          />
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel className="flex-1 p-5">
+
+        </ResizablePanel>
+      </ResizablePanelGroup>
     ) : (
       <UploadZone onUploadComplete={setUploadedDoc} />
     )}
@@ -22,4 +67,4 @@ return (
 )
 }
 
-export default page
+export default Page
