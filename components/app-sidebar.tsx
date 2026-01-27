@@ -27,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useChat } from "@/hooks/use-chat"
 
 export function AppSidebar() {
   const {
@@ -38,6 +39,10 @@ export function AppSidebar() {
     isMobile,
     toggleSidebar,
   } = useSidebar()
+
+  const user = useChat();
+  const firstName = user?.firstName ?? "Unknown";
+  const lastName = user?.lastName ?? "Profile";
 
   return (
     <Sidebar collapsible="icon">
@@ -76,8 +81,8 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  User Profile
+                <SidebarMenuButton className='font-medium' >
+                  {firstName} {lastName}
                   <ChevronUp className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
