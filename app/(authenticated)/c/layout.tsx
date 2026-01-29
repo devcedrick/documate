@@ -46,13 +46,7 @@ export default function ChatLayout({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [uploadedDoc])
 
-  if (!isMounted) {
-    return (
-      <div className='flex items-center justify-center w-full h-full'>
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    )
-  }
+  if (!isMounted) return;
 
   return (
     <ChatContextProvider>

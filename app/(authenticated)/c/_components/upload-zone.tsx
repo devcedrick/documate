@@ -6,6 +6,7 @@ import { UploadCloud, FileText, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils" 
 import { toast } from "sonner"  
 import { uploadDocument } from "../actions"
+import { useChat } from "@/hooks/use-chat"
 
 interface UploadZoneProps {
   onUploadComplete: (doc: any) => void
@@ -13,6 +14,8 @@ interface UploadZoneProps {
 
 export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
   const [isUploading, setIsUploading] = useState(false)
+  const user = useChat();
+  const useCase = user?.useCase;
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -22,6 +25,7 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
     
     const formData = new FormData()
     formData.append("file", file)
+    formData.append("useCase", useCase || "general");
 
     const result = await uploadDocument(formData)
 
@@ -39,7 +43,7 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
     onDrop,
     accept: { 
       'application/pdf': ['.pdf'],
-      'application/msword': ['.doc', '.docx'],
+      'application/msword': ['.docx'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'text/plain': ['.txt'],
     },
