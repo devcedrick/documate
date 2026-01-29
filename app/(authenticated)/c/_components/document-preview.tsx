@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { FileText, Loader2, X } from "lucide-react"
 import { toast } from "sonner"
-import { deleteDocument } from "../actions"
+import { deleteDocument } from "../actions/delete-document"
 
 interface DocumentPreviewProps {
   doc: {

@@ -5,7 +5,7 @@ import { useDropzone } from "react-dropzone"
 import { UploadCloud, FileText, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils" 
 import { toast } from "sonner"  
-import { uploadDocument } from "../actions"
+import { uploadDocument } from "../actions/upload-document"
 import { useChat } from "@/hooks/use-chat"
 
 interface UploadZoneProps {

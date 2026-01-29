@@ -79,7 +79,6 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
         });
       if (insertError) {
         console.error(`Failed to insert chunk #${i}:`, insertError);
-        // Continue inserting other chunks, but log the error
       }
     }
 
@@ -95,7 +94,6 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
 
     return { success: true };
   } catch (err) {
-    // Top-level error catch
     console.error("ingestDocument failed:", err);
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -151,33 +149,8 @@ export async function uploadDocument(formData: FormData) {
 
   if (dbError) return { error: "Database error" }
 
-  // Trigger document ingestion (background, do not await)
+  // Trigger document ingestion
   ingestDocument(doc.id, filePath, useCase);
 
   return { success: true, doc }
-}
-
-export async function deleteDocument(docId: string, filePath: string) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Unauthorized" }
-
-  // Delete file from storage
-  const { error: storageError } = await supabase.storage
-    .from('user_documents')
-    .remove([filePath])
-
-  if (storageError) return { error: "Failed to delete file from storage" }
-
-  // Delete metadata from database
-  const { error: dbError } = await supabase
-    .from('documents')
-    .delete()
-    .eq('id', docId)
-    .eq('user_id', user.id)
-
-  if (dbError) return { error: "Failed to delete document record" }
-
-  return { success: true }
 }
