@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/resizable"
 import ChatPanel from './_components/chat-panel'
 import ChatInput from "./_components/chat-input";
+import ChatContextProvider from '@/contexts/chat-context'
+import { WelcomeBanner } from "./_components/welcome-banner";
 
 interface UploadedDocument {
   id: string
@@ -44,40 +46,39 @@ export default function ChatLayout({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [uploadedDoc])
 
-  if (!isMounted) {
-    return (
-      <div className='flex items-center justify-center w-full h-full'>
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    )
-  }
+  if (!isMounted) return;
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <main className="flex-1 flex flex-col min-h-dvh max-h-dvh p-5">
-        <header>This is the header part</header>
-        <div className="flex items-center justify-center w-full h-full">
-          {uploadedDoc ? (
-            <ResizablePanelGroup className='border-2 rounded-lg p-3'>
-              <ResizablePanel defaultSize={300} minSize={250} maxSize={500} className='p-3'>
-                <h3 className="font-medium mb-3">Files</h3>
-                <DocumentPreview 
-                  doc={uploadedDoc} 
-                  onDelete={() => setUploadedDoc(null)} 
-                />
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel className="flex flex-col items-center justify-center flex-1 p-5">
-                {children}
-                <ChatInput />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          ) : (
-            <UploadZone onUploadComplete={setUploadedDoc} />
-          )}
-        </div>
-      </main>
-    </SidebarProvider>
+    <ChatContextProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <main className="flex-1 flex flex-col min-h-dvh max-h-dvh p-5">
+          <header>This is the header part</header>
+          <div className='flex items-center justify-center w-full h-full'>
+            {uploadedDoc ? (
+              <ResizablePanelGroup className='border-2 rounded-lg p-3'>
+                <ResizablePanel defaultSize={300} minSize={250} maxSize={500} className='p-3'>
+                  <h3 className="font-medium mb-3">Files</h3>
+                  <DocumentPreview 
+                    doc={uploadedDoc} 
+                    onDelete={() => setUploadedDoc(null)} 
+                  />
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel className="flex flex-col items-center justify-center flex-1 p-5">
+                  {children}
+                  <ChatInput />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              <>
+                <WelcomeBanner />
+                <UploadZone onUploadComplete={setUploadedDoc} />
+              </>
+            )}
+          </div>
+        </main>
+      </SidebarProvider>
+    </ChatContextProvider>
   );
 }
