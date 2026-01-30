@@ -6,7 +6,7 @@ import { UploadCloud, FileText, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils" 
 import { toast } from "sonner"  
 import { uploadDocument } from "../actions/upload-document"
-import { useChat } from "@/hooks/use-chat"
+import { useChatContext } from "@/hooks/use-chat-context"
 
 interface UploadZoneProps {
   onUploadComplete: (doc: any) => void
@@ -14,7 +14,7 @@ interface UploadZoneProps {
 
 export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
   const [isUploading, setIsUploading] = useState(false)
-  const user = useChat();
+  const user = useChatContext();
   const useCase = user?.useCase;
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {

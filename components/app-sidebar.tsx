@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useChat } from "@/hooks/use-chat"
+import { useChatContext } from "@/hooks/use-chat-context"
 
 export function AppSidebar() {
   const {
@@ -40,7 +40,7 @@ export function AppSidebar() {
     toggleSidebar,
   } = useSidebar()
 
-  const user = useChat();
+  const user = useChatContext();
   const firstName = user?.firstName ?? "Unknown";
   const lastName = user?.lastName ?? "Profile";
 
