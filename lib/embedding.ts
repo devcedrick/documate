@@ -1,7 +1,7 @@
 import { google } from '@ai-sdk/google';
 import { embedMany } from 'ai';
 
-export async function getEmbeddings(chunks: string[], fileName: string) {
+export async function getEmbeddings(chunks: string[], fileName: string, taskType?: string) {
   const model = google.embedding('gemini-embedding-001');
 
   const { embeddings } = await embedMany({
@@ -10,7 +10,7 @@ export async function getEmbeddings(chunks: string[], fileName: string) {
     providerOptions: {
       google: {
         outputDimensionality: 768,
-        taskType: 'RETRIEVAL_DOCUMENT', 
+        taskType: taskType || 'RETRIEVAL_DOCUMENT', 
         title: fileName || 'Untitled Document',
       },
     },
