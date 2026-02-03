@@ -4,7 +4,17 @@ import { getEmbeddings } from "@/lib/embedding";
 import { buildSystemPrompt } from "@/lib/prompts/index";
 import { google } from "@ai-sdk/google";
 
-export const maxDuration = 30;
+// Helper to extract text from message (handles both parts[] and content formats)
+function getMessageText(message: any): string {
+  if (typeof message.content === 'string') return message.content;
+  if (message.parts && Array.isArray(message.parts)) {
+    const textPart = message.parts.find((p: any) => p.type === 'text');
+    return textPart?.text || '';
+  }
+  return '';
+}
+
+export const maxDuration = 60 * 5; // 5 minutes
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -13,6 +23,10 @@ export async function POST(request: Request) {
   if (!user) throw new Error('Unauthorized');
 
   const {docId, chatId, messages, config} = await request.json();
+
+  if (!docId) {
+    return new Response('Bad Request: Missing documentId', { status: 400 });
+  }
 
   let activeChatId = chatId;
   let activeDocId = docId;
@@ -23,12 +37,13 @@ export async function POST(request: Request) {
       if (!activeChatId) {
         if (!activeDocId) throw new Error('Missing documentId');
 
+        const lastMessageText = getMessageText(messages[messages.length - 1]);
         const { data: newChat, error: chatError } = await supabase
           .from('chats')
           .insert([{
             document_id: activeDocId,
             user_id: user.id,
-            title: messages[messages.length - 1].content.slice(0, 30), // TEMPORARY TITLE
+            title: lastMessageText.slice(0, 30),
           }])
           .select()
           .single();
@@ -56,18 +71,20 @@ export async function POST(request: Request) {
       }
 
       // RAG PIPELINE
-      const lastUserMessage = messages[messages.length - 1].content;
+      const lastUserMessage = getMessageText(messages[messages.length - 1]);
       const embeddings = await getEmbeddings([lastUserMessage], 'chat-history', 'RETRIEVAL_QUERY');
 
       const queryVector = embeddings[0];
 
-      const { data: chunks } = await supabase.rpc('match_documents', {
+      const { data: chunks, error: matchingError } = await supabase.rpc('match_documents', {
         query_embedding: queryVector,
         match_threshold: 0.5,
         match_count: 5,
         filter_document_id: activeDocId,
         filter_user_id: user.id,
       });
+
+      if (matchingError) throw matchingError;
 
       const contextText = chunks?.map((c: any) => c.content).join("\n\n") || "";
 
@@ -81,27 +98,27 @@ export async function POST(request: Request) {
 
       // MESSAGE STREAM RESPONSE
       const result = streamText({
-        model: google('gemini-2.0-flash'),
+        model: google('gemini-2.5-flash'),
         system: systemPrompt,
         messages: await convertToModelMessages(messages),
         onFinish: async ({ text }) => {
-           // 1. Save User Message
+           // Save User Message
            await supabase.from('messages').insert({
              chat_id: activeChatId,
              role: 'user',
              content: lastUserMessage
            });
 
-           // 2. Save Assistant Message
+           // Save Assistant Message
            await supabase.from('messages').insert({
              chat_id: activeChatId,
              role: 'assistant',
              content: text
            });
         },
-      })
+      });
 
-      writer.merge(result.toUIMessageStream());
+      await writer.merge(result.toUIMessageStream());
     },
     onError: error => {
       return error instanceof Error ? error.message : String(error);

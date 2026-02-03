@@ -22,7 +22,10 @@ export async function deleteDocument(docId: string, filePath: string) {
     .eq('id', docId)
     .eq('user_id', user.id)
 
-  if (dbError) return { error: "Failed to delete document record" }
+  if (dbError) {
+    console.error("DB Deletion Error:", dbError)
+    return { error: "Failed to delete document record" }
+  }
 
   return { success: true }
 }

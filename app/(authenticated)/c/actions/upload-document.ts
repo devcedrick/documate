@@ -58,7 +58,7 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
     // 4. Generate embeddings
     let embeddings;
     try {
-      embeddings = await getEmbeddings(chunks.map(c => c.content), filePath);
+      embeddings = await getEmbeddings(chunks.map(c => c.content), filePath, 'RETRIEVAL_DOCUMENT');
       if (!embeddings || embeddings.length !== chunks.length) throw new Error();
     } catch (err) {
       console.error("Failed to generate embeddings", err);
