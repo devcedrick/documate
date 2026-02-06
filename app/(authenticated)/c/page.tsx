@@ -21,16 +21,26 @@ const Page = () => {
   const router = useRouter();
   const [uploadedDoc, setUploadedDoc] = useState<UploadedDocument | null>(null)
   const [input, setInput] = useState<string>("");
+  const [chatId, setChatId] = useState<string>("");
+
 
   const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
+    onData: ({ data, type }) => {
+      if (type === 'data-chat_created') {
+        const chatData = data as { chatId: string };
+        setChatId(chatData.chatId);
+      }
+    },
   });
 
   useEffect(() => {
-    
-  }, [router]);
+    if (chatId && status === 'ready' && messages.length > 0) {
+      router.push(`/c/${chatId}`);
+    }
+  }, [router, chatId, status, messages.length]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,7 +54,7 @@ const Page = () => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full gap-2">
-      <header className="font-medium text-lg">New Chat</header>
+      <header className="font-medium text-lg">{chatId ? chatId : 'New Chat'}</header>
       {!uploadedDoc ? (
         <div className="flex w-full h-full">
           <WelcomeBanner />

@@ -1,17 +1,34 @@
 import { createClient } from '@/utils/supabase/server';
 import { notFound, redirect } from 'next/navigation';
-import { ChatInterface } from './_components/chat-interface'; // We will create this next
+import ChatInterface from './_components/chat-interface';
+import { UploadedDocument } from '../page';
 
-export default async function ChatPage({ params }: { params: { chatId: string } }) {
+interface Message {
+  id: string;
+  chat_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+interface Chat {
+  id: string;
+  user_id: string;
+  document_id: string;
+  title: string;
+  document: UploadedDocument;
+  messages: Message[];
+}
+
+export default async function ChatPage({ 
+  params 
+}: { 
+  params: Promise<{ chatId: string }> 
+}) {
   const supabase = await createClient();
-  const { chatId } = params;
+  const { chatId } = await params;
 
-  // 1. Auth Check
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  // 2. Fetch Chat Session + Related Document + Messages
-  // We use a single query with joins for efficiency
+  // Fetch Chat Session + Related Document + Messages (ordered by created_at)
   const { data: chat, error } = await supabase
     .from('chats')
     .select(`
@@ -20,6 +37,7 @@ export default async function ChatPage({ params }: { params: { chatId: string } 
       messages (*)
     `)
     .eq('id', chatId)
+    .order('created_at', { referencedTable: 'messages', ascending: true })
     .single();
 
   if (error || !chat) {
@@ -27,19 +45,17 @@ export default async function ChatPage({ params }: { params: { chatId: string } 
     return notFound();
   }
 
-  // 3. Security: Ensure User Owns this Chat
-  if (chat.user_id !== user.id) {
-    return notFound(); // Hide it completely (Security by Obscurity)
-  }
+  const typedChat = chat as Chat;
 
-  // 4. Render the Client Interface
   return (
-    <div className="flex h-screen w-full bg-background">
+    <div className="flex flex-col items-center justify-center w-full h-full gap-2">
+      <header className="font-medium text-lg">
+        {typedChat.title || 'Chat'}
+      </header>
       <ChatInterface 
-        chatId={chat.id}
-        initialMessages={chat.messages || []}
-        document={chat.document} // Pass file metadata for the FilePanel
-        userConfig={user.user_metadata?.config || {}} // Optional: Load saved user preferences
+        chatId={typedChat.id}
+        initialMessages={typedChat.messages || []}
+        document={typedChat.document}
       />
     </div>
   );

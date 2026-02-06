@@ -118,7 +118,7 @@ export async function POST(request: Request) {
         },
       });
 
-      await writer.merge(result.toUIMessageStream());
+      writer.merge(result.toUIMessageStream());
     },
     onError: error => {
       return error instanceof Error ? error.message : String(error);
