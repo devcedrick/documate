@@ -49,7 +49,7 @@ export default async function ChatPage({
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full gap-2">
-      <header className="font-medium text-lg">
+      <header className="font-medium text-base">
         {typedChat.document?.doc_title || 'Chat'}
       </header>
       <ChatInterface 

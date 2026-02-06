@@ -66,8 +66,8 @@ const Page = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full gap-2">
-      <header className="font-medium text-lg">{chatId ? chatId : 'New Chat'}</header>
+    <div className="flex flex-col items-center justify-center w-full h-full gap-3">
+      <header className="font-medium text-lg">New Chat</header>
       {!uploadedDoc ? (
         <div className="flex w-full h-full">
           <WelcomeBanner />

@@ -5,10 +5,13 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarHeader,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import Image from "next/image"
+import Link from "next/link"
 import { SidebarTrigger, SidebarMenuButton, SidebarMenu } from "@/components/ui/sidebar"
 import { useSidebar } from "@/components/ui/sidebar"
 import { Separator } from "./ui/separator"
@@ -28,6 +31,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useChatContext } from "@/hooks/use-chat-context"
+import { useEffect, useState } from "react"
+import { createClient } from "@/utils/supabase/client"
+import { usePathname } from "next/navigation"
+
+interface ChatConversation {
+  id: string
+  created_at: string
+  document: {
+    doc_title: string | null
+    file_name: string
+  } | null
+}
 
 export function AppSidebar() {
   const {
@@ -43,6 +58,42 @@ export function AppSidebar() {
   const user = useChatContext();
   const firstName = user?.firstName ?? "Unknown";
   const lastName = user?.lastName ?? "Profile";
+  const pathname = usePathname();
+
+  const [chats, setChats] = useState<ChatConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchChats = async () => {
+      setLoading(true);
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('chats')
+        .select(`
+          id,
+          created_at,
+          document:documents (doc_title, file_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const transformed = data.map(chat => {
+          const doc = Array.isArray(chat.document) 
+            ? chat.document[0] 
+            : chat.document;
+          return {
+            ...chat,
+            document: doc || null
+          };
+        });
+        setChats(transformed as ChatConversation[]);
+      }
+      setLoading(false);
+    };
+
+    fetchChats();
+  }, [pathname]);
 
   return (
     <Sidebar collapsible="icon">
@@ -63,25 +114,57 @@ export function AppSidebar() {
           </Tooltip>
         </div>
         {/* ROW 2 - Header: New Chat Button */}
-        <SidebarMenuButton className="mt-3" tooltip='New Chat'>
-          <Plus/> 
-          <span className="text-base">New Chat</span>
+        <SidebarMenuButton className="mt-3" tooltip='New Chat' asChild>
+          <Link href={'/c'}>
+            <Plus/> 
+            <span className="text-base">New Chat</span>
+          </Link>
         </SidebarMenuButton>
         <Separator />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup />
-        <SidebarGroup />
+        <SidebarGroup className={!open ? 'hidden' : ''}>
+          <SidebarGroupLabel className="truncate">Recent Chats</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {chats.length === 0 ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <span className="text-muted-foreground text-sm">No conversations yet</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : (
+                chats.map((chat) => {
+                  const isActive = pathname === `/c/${chat.id}`;
+                  const title = chat.document?.doc_title || chat.document?.file_name || 'Untitled';
+                  
+                  return (
+                    <SidebarMenuItem key={chat.id}>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={isActive}
+                        tooltip={title}
+                      >
+                        <Link href={`/c/${chat.id}`}>
+                          <span className="truncate">{title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className={!open ? 'hidden' : ''}>
         <Separator />
-        <span className="text-sm ml-1.5">Mode: Unknown</span>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className='font-medium' >
+                <SidebarMenuButton className='font-medium truncate' >
                   {firstName} {lastName}
                   <ChevronUp className="ml-auto" />
                 </SidebarMenuButton>
