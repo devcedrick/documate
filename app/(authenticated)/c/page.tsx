@@ -7,12 +7,14 @@ import UploadZone from "./_components/upload-zone"
 import { WelcomeBanner } from "./_components/welcome-banner"
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import { useChatContext } from "@/hooks/use-chat-context"
 
 export interface UploadedDocument {
   id: string
   file_name: string
   file_path: string
   file_size: number
+  doc_title: string
   [key: string]: unknown
 }
 
@@ -22,6 +24,12 @@ const Page = () => {
   const [uploadedDoc, setUploadedDoc] = useState<UploadedDocument | null>(null)
   const [input, setInput] = useState<string>("");
   const [chatId, setChatId] = useState<string>("");
+  const user = useChatContext();
+  const userConfig = {
+    useCase: user?.useCase || 'general',
+    preference: user?.responsePreference || 'detailed',
+    strictness: user?.strictnessLevel || 'balanced',
+  }
 
 
   const { messages, sendMessage, status, stop } = useChat({
@@ -47,7 +55,12 @@ const Page = () => {
     if (!input.trim()) return;
     sendMessage(
       { parts: [{ type: 'text', text: input }] },
-      { body: { docId: uploadedDoc?.id } }
+      { 
+        body: { 
+        docId: uploadedDoc?.id ,
+        config: userConfig
+        } 
+      }
     );
     setInput("");
   }
@@ -69,6 +82,7 @@ const Page = () => {
           handleInputChange={(e) => setInput(e.target.value)}
           handleSubmit={handleSubmit}
           disableButton={status !== 'ready' || input.trim() === ''}
+          status={status}
         />
       )}
     </div>

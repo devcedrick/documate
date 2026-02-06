@@ -25,6 +25,15 @@ const ChatInput = ({
   handleSubmit,
   isSendDisabled
 }: ChatInputProps) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isSendDisabled) {
+        handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+      }
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className='w-full'>
       <InputGroup className={cn(className)}>
@@ -32,6 +41,7 @@ const ChatInput = ({
         placeholder='Ask a question about your document…' className='min-w-full max-h-35' 
         value={input}
         onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
       />
         <InputGroupAddon align='block-end' >
           <InputGroupButton variant='default' className='px-2! py-4! ml-auto ' type='submit' disabled={isSendDisabled}>

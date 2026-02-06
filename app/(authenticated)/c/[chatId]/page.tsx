@@ -15,7 +15,7 @@ interface Chat {
   id: string;
   user_id: string;
   document_id: string;
-  title: string;
+  doc_title: string;
   document: UploadedDocument;
   messages: Message[];
 }
@@ -50,7 +50,7 @@ export default async function ChatPage({
   return (
     <div className="flex flex-col items-center justify-center w-full h-full gap-2">
       <header className="font-medium text-lg">
-        {typedChat.title || 'Chat'}
+        {typedChat.document?.doc_title || 'Chat'}
       </header>
       <ChatInterface 
         chatId={typedChat.id}

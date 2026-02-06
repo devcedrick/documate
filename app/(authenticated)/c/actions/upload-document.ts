@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server"
 import { parseFile } from "@/lib/parser"
 import { chunkText } from "@/lib/chunking"
 import { getEmbeddings } from "@/lib/embedding"
+import { generateTitle } from "@/lib/generateTitle"
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
 const ALLOWED_TYPES = [
@@ -82,17 +83,22 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
       }
     }
 
-    // 6. Mark document as processed
+    // Generate Document Title
+    const docTitle = await generateTitle(parsed.text);
+
+    // 6. Update document 
     const { error: updateError } = await supabase
       .from('documents')
-      .update({ is_processed: true })
+      .update({ is_processed: true, doc_title: docTitle })
       .eq('id', docId);
     if (updateError) {
       console.error("Failed to update document status:", updateError);
       throw new Error("Failed to update document status");
     }
 
-    return { success: true };
+    return {
+      success: true,
+     };
   } catch (err) {
     console.error("ingestDocument failed:", err);
     return { error: err instanceof Error ? err.message : "Unknown error" };

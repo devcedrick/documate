@@ -102,6 +102,7 @@ export default function ChatInterface({
       handleInputChange={(e) => setInput(e.target.value)}
       handleSubmit={handleSubmit}
       disableButton={status !== 'ready' || input.trim() === ''}
+      status={status}
     />
   )
 }

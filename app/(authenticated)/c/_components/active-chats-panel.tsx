@@ -1,16 +1,37 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { UIMessage } from '@ai-sdk/react'
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Loader2 } from 'lucide-react'
 
 interface ActiveChatPanelProps {
   messages: UIMessage[];
+  status?: 'submitted' | 'streaming' | 'ready' | 'error';
 }
 
+const ThinkingIndicator = () => (
+  <div className="w-full flex justify-start">
+    <div className="flex items-center gap-2 p-3 rounded-lg text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      <span className="text-sm">Thinking...</span>
+    </div>
+  </div>
+);
+
 const ActiveChatPanel = ({
-  messages
+  messages,
+  status
 }: ActiveChatPanelProps) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isThinking = status === 'submitted' || status === 'streaming';
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isThinking]);
+
   return (
     <ScrollArea className='flex-1 w-full min-h-0 p-2 mb-2'>
       <div className='flex flex-col gap-4 p-3'>
@@ -30,6 +51,10 @@ const ActiveChatPanel = ({
             )
           })
         }
+        {isThinking && messages[messages.length - 1]?.role === 'user' && (
+          <ThinkingIndicator />
+        )}
+        <div ref={scrollRef} />
       </div>
     </ScrollArea>
   )

@@ -14,7 +14,7 @@ function getMessageText(message: any): string {
   return '';
 }
 
-export const maxDuration = 60 * 5; // 5 minutes
+export const maxDuration = 30;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -33,17 +33,17 @@ export async function POST(request: Request) {
 
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
-      // -- SCENARIO A: No active chat, create a new one --
+      // -- SCENARIO A: No active chat --
       if (!activeChatId) {
         if (!activeDocId) throw new Error('Missing documentId');
 
         const lastMessageText = getMessageText(messages[messages.length - 1]);
+        
         const { data: newChat, error: chatError } = await supabase
           .from('chats')
           .insert([{
             document_id: activeDocId,
             user_id: user.id,
-            title: lastMessageText.slice(0, 30),
           }])
           .select()
           .single();
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         writer.write({
           type: 'data-chat_created',
           data: { chatId: activeChatId },
-        })
+        });
       }
       // SCENARIO B: Active chat, derive documentId from it
       else {
@@ -102,19 +102,19 @@ export async function POST(request: Request) {
         system: systemPrompt,
         messages: await convertToModelMessages(messages),
         onFinish: async ({ text }) => {
-           // Save User Message
-           await supabase.from('messages').insert({
-             chat_id: activeChatId,
-             role: 'user',
-             content: lastUserMessage
-           });
+          // Save User Message
+          await supabase.from('messages').insert({
+            chat_id: activeChatId,
+            role: 'user',
+            content: lastUserMessage
+          });
 
-           // Save Assistant Message
-           await supabase.from('messages').insert({
-             chat_id: activeChatId,
-             role: 'assistant',
-             content: text
-           });
+          // Save Assistant Message
+          await supabase.from('messages').insert({
+            chat_id: activeChatId,
+            role: 'assistant',
+            content: text
+          });
         },
       });
 

@@ -21,6 +21,7 @@ interface ChatSplitViewProps {
   handleSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   onDeleteDoc?: () => void; 
   disableButton: boolean;
+  status?: 'submitted' | 'streaming' | 'ready' | 'error';
 }
 
 const ChatSplitView = ({
@@ -30,7 +31,8 @@ const ChatSplitView = ({
   handleInputChange,
   handleSubmit,
   onDeleteDoc,
-  disableButton
+  disableButton,
+  status
 }: ChatSplitViewProps) => {
   if(!document) return;
 
@@ -54,7 +56,7 @@ const ChatSplitView = ({
               </h2>
             </div>
           ) : (
-            <ActiveChatPanel messages={messages} />
+            <ActiveChatPanel messages={messages} status={status} />
           )}
           <ChatInput 
             className="mt-auto shrink-0"
