@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react'
 import { UIMessage } from '@ai-sdk/react'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2 } from 'lucide-react'
+import MarkdownRenderer from './markdown-renderer'
 
 interface ActiveChatPanelProps {
   messages: UIMessage[];
@@ -43,7 +44,9 @@ const ActiveChatPanel = ({
                   {msg.parts.map((part, i) => {
                     switch (part.type) {
                       case 'text':
-                        return <div key={`${msg.id}-${i}`}>{part.text}</div>;
+                        return msg.role === 'assistant' 
+                          ? <MarkdownRenderer key={`${msg.id}-${i}`} content={part.text} />
+                          : <div key={`${msg.id}-${i}`}>{part.text}</div>;
                     }
                   })}
                 </div>
