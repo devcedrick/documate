@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import ChatSplitView from '../../_components/chat-split-view'
 import { UploadedDocument } from '../../page'
 import { useChatContext } from '@/hooks/use-chat-context'
+import { toast } from 'sonner'
 
 // Types
 interface Message {
@@ -58,12 +59,36 @@ export default function ChatInterface({
   // Convert DB messages to UI format
   const convertedInitialMessages = convertToUIMessages(initialMessages)
   
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, error } = useChat({
     id: chatId,
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
+    onData: ({ data, type }) => {
+      // Handle custom error events from stream
+      if (type === 'data-error') {
+        const errorData = data as { message: string; code: string };
+        console.error('[Chat] Stream error:', errorData);
+        toast.error('Error', { description: errorData.message });
+      }
+    },
+    onError: (err) => {
+      console.error('[Chat] Error:', err);
+      toast.error('Error', { 
+        description: err.message || 'Failed to send message. Please try again.' 
+      });
+    },
   })
+
+  // Show error toast when error state changes
+  useEffect(() => {
+    if (error) {
+      console.error('[Chat] Hook error:', error);
+      toast.error('Error', { 
+        description: error.message || 'Something went wrong. Please try again.' 
+      });
+    }
+  }, [error]);
 
   // Set initial messages on mount
   useEffect(() => {

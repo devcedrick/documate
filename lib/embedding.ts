@@ -1,14 +1,40 @@
 import { google } from '@ai-sdk/google';
 import { embedMany } from 'ai';
 
+// Custom error class for embedding-related errors
+export class EmbeddingError extends Error {
+  code: string;
+  isRetryable: boolean;
+  
+  constructor(message: string, code: string, isRetryable = false) {
+    super(message);
+    this.name = 'EmbeddingError';
+    this.code = code;
+    this.isRetryable = isRetryable;
+  }
+}
+
 export async function getEmbeddings(chunks: string[], fileName: string, taskType?: string) {
+  console.log(`[Embedding] Starting embedding generation for ${chunks.length} chunks`);
+  
+  if (!chunks || chunks.length === 0) {
+    console.error('[Embedding] Error: No chunks provided');
+    throw new EmbeddingError('No content to embed', 'EMPTY_CONTENT', false);
+  }
+
   const model = google.embedding('gemini-embedding-001');
   const BATCH_SIZE = 100;
   let allEmbeddings: any[] = [];
 
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
     let attempt = 0;
+    const MAX_RETRIES = 3;
+    
+    console.log(`[Embedding] Processing batch ${batchNum}/${totalBatches}`);
+    
     while (true) {
       try {
         const { embeddings } = await embedMany({
@@ -23,25 +49,44 @@ export async function getEmbeddings(chunks: string[], fileName: string, taskType
           },
         });
         allEmbeddings.push(...embeddings);
+        console.log(`[Embedding] Batch ${batchNum} completed successfully`);
         break;
       } catch (err: any) {
-        // Check for quota error (429) and retry if possible
-        const isQuota = err?.statusCode === 429 || (err?.responseBody && err.responseBody.includes('quota'));
-        if (isQuota && attempt < 3) {
-          // Try to parse retry delay from error message (in seconds)
+        const statusCode = err?.statusCode || err?.status;
+        const errorMessage = err?.message || 'Unknown error';
+        const responseBody = err?.responseBody || '';
+        
+        console.error(`[Embedding] Error in batch ${batchNum}, attempt ${attempt + 1}:`, {
+          statusCode,
+          message: errorMessage,
+          responseBody: responseBody.slice(0, 500)
+        });
+        
+        // Check for quota/rate limit error (429)
+        const isQuota = statusCode === 429 || responseBody.includes('quota') || responseBody.includes('rate');
+        
+        if (isQuota && attempt < MAX_RETRIES) {
           let delay = 35000; // default 35s
-          const match = err?.responseBody?.match(/retry in ([\d.]+)s/);
+          const match = responseBody?.match(/retry in ([\d.]+)s/);
           if (match && match[1]) {
             delay = Math.ceil(Number(match[1]) * 1000);
           }
+          console.log(`[Embedding] Rate limited. Retrying in ${delay/1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
           await new Promise(res => setTimeout(res, delay));
           attempt++;
+        } else if (statusCode === 401 || statusCode === 403) {
+          throw new EmbeddingError('API authentication failed. Please check your API key.', 'AUTH_ERROR', false);
+        } else if (statusCode === 400) {
+          throw new EmbeddingError('Invalid request to embedding API. Content may be too long or malformed.', 'INVALID_REQUEST', false);
+        } else if (isQuota) {
+          throw new EmbeddingError('API rate limit exceeded. Please try again later.', 'RATE_LIMIT', true);
         } else {
-          throw err;
+          throw new EmbeddingError(`Embedding generation failed: ${errorMessage}`, 'EMBEDDING_FAILED', false);
         }
       }
     }
   }
 
+  console.log(`[Embedding] Successfully generated ${allEmbeddings.length} embeddings`);
   return allEmbeddings;
 }

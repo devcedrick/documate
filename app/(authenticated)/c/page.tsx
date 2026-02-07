@@ -8,6 +8,7 @@ import { WelcomeBanner } from "./_components/welcome-banner"
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useChatContext } from "@/hooks/use-chat-context"
+import { toast } from "sonner"
 
 export interface UploadedDocument {
   id: string
@@ -32,7 +33,7 @@ const Page = () => {
   }
 
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
@@ -41,8 +42,30 @@ const Page = () => {
         const chatData = data as { chatId: string };
         setChatId(chatData.chatId);
       }
+      // Handle custom error events from stream
+      if (type === 'data-error') {
+        const errorData = data as { message: string; code: string };
+        console.error('[Chat] Stream error:', errorData);
+        toast.error('Error', { description: errorData.message });
+      }
+    },
+    onError: (err) => {
+      console.error('[Chat] Error:', err);
+      toast.error('Error', { 
+        description: err.message || 'Failed to send message. Please try again.' 
+      });
     },
   });
+
+  // Show error toast when status becomes error
+  useEffect(() => {
+    if (error) {
+      console.error('[Chat] Hook error:', error);
+      toast.error('Error', { 
+        description: error.message || 'Something went wrong. Please try again.' 
+      });
+    }
+  }, [error]);
 
   useEffect(() => {
     if (chatId && status === 'ready' && messages.length > 0) {
