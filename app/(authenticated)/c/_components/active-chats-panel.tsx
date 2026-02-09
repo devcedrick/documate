@@ -25,13 +25,19 @@ const ActiveChatPanel = ({
   status
 }: ActiveChatPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isThinking = status === 'submitted' || status === 'streaming';
+  const isStreaming = status === 'submitted' || status === 'streaming';
+  
+  const lastMessage = messages[messages.length - 1];
+  const lastAssistantHasContent = lastMessage?.role === 'assistant' && 
+    lastMessage.parts?.some(part => part.type === 'text' && (part as { text: string }).text?.trim().length > 0);
+  
+  const showThinking = isStreaming && !lastAssistantHasContent;
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isThinking]);
+  }, [messages, showThinking]);
 
   return (
     <ScrollArea className='flex-1 w-full min-h-0 p-2 mb-2'>
@@ -54,7 +60,7 @@ const ActiveChatPanel = ({
             )
           })
         }
-        {isThinking && messages[messages.length - 1]?.role === 'user' && (
+        {showThinking && (
           <ThinkingIndicator />
         )}
         <div ref={scrollRef} />
