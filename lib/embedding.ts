@@ -1,7 +1,6 @@
 import { google } from '@ai-sdk/google';
 import { embedMany } from 'ai';
 
-// Custom error class for embedding-related errors
 export class EmbeddingError extends Error {
   code: string;
   isRetryable: boolean;
@@ -22,14 +21,26 @@ export async function getEmbeddings(chunks: string[], fileName: string, taskType
     throw new EmbeddingError('No content to embed', 'EMPTY_CONTENT', false);
   }
 
+  
+  const validChunks = chunks.filter(chunk => chunk && chunk.trim().length > 0);
+  
+  if (validChunks.length === 0) {
+    console.error('[Embedding] Error: All chunks are empty after filtering');
+    throw new EmbeddingError('No valid content to embed', 'EMPTY_CONTENT', false);
+  }
+  
+  if (validChunks.length !== chunks.length) {
+    console.warn(`[Embedding] Filtered out ${chunks.length - validChunks.length} empty chunks`);
+  }
+
   const model = google.embedding('gemini-embedding-001');
   const BATCH_SIZE = 100;
   let allEmbeddings: any[] = [];
 
-  for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-    const batch = chunks.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < validChunks.length; i += BATCH_SIZE) {
+    const batch = validChunks.slice(i, i + BATCH_SIZE);
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-    const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
+    const totalBatches = Math.ceil(validChunks.length / BATCH_SIZE);
     let attempt = 0;
     const MAX_RETRIES = 3;
     
@@ -62,11 +73,11 @@ export async function getEmbeddings(chunks: string[], fileName: string, taskType
           responseBody: responseBody.slice(0, 500)
         });
         
-        // Check for quota/rate limit error (429)
+      
         const isQuota = statusCode === 429 || responseBody.includes('quota') || responseBody.includes('rate');
         
         if (isQuota && attempt < MAX_RETRIES) {
-          let delay = 35000; // default 35s
+          let delay = 35000;
           const match = responseBody?.match(/retry in ([\d.]+)s/);
           if (match && match[1]) {
             delay = Math.ceil(Number(match[1]) * 1000);

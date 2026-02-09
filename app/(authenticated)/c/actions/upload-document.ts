@@ -14,7 +14,6 @@ const ALLOWED_TYPES = [
   'text/plain',
 ] 
 
-// User-friendly error messages for different failure types
 const ERROR_MESSAGES = {
   DOWNLOAD_FAILED: 'Failed to retrieve your document. Please try uploading again.',
   PARSE_FAILED: 'Could not read the document content. The file may be corrupted or password-protected.',
@@ -29,7 +28,7 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
   console.log(`[Ingest] Starting document ingestion for docId: ${docId}`);
   
   try {
-    // 1. Download file from storage
+    // Download file from storage
     console.log('[Ingest] Step 1: Downloading file from storage...');
     const { data, error } = await supabase
       .storage
@@ -42,7 +41,7 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
     }
     console.log('[Ingest] File downloaded successfully');
 
-    // 2. Parse file
+    // Parse file
     console.log('[Ingest] Step 2: Parsing file...');
     let fileBuffer, mimeType;
     try {
@@ -68,7 +67,7 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
     }
     console.log(`[Ingest] File parsed: ${parsed.text.length} chars extracted`);
 
-    // 3. Chunk text
+    // Chunk text
     console.log('[Ingest] Step 3: Chunking text...');
     let chunks;
     try {
@@ -76,13 +75,18 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
       if (!chunks || chunks.length === 0) {
         throw new Error('No chunks generated');
       }
+      
+      chunks = chunks.filter(c => c.content && c.content.trim().length > 0);
+      if (chunks.length === 0) {
+        throw new Error('All chunks are empty after filtering');
+      }
     } catch (err) {
       console.error("[Ingest] Chunking failed:", err);
       throw { code: 'CHUNK_FAILED', original: err };
     }
-    console.log(`[Ingest] Created ${chunks.length} chunks`);
+    console.log(`[Ingest] Created ${chunks.length} valid chunks`);
 
-    // 4. Generate embeddings
+    // Generate embeddings
     console.log('[Ingest] Step 4: Generating embeddings...');
     let embeddings;
     try {
@@ -99,7 +103,7 @@ export async function ingestDocument(docId: string, filePath: string, useCase: s
     }
     console.log(`[Ingest] Generated ${embeddings.length} embeddings`);
 
-    // 5. Insert chunks into document_sections
+    // Insert chunks into document_sections
     console.log('[Ingest] Step 5: Inserting chunks into database...');
     let insertedCount = 0;
     let failedCount = 0;
@@ -182,7 +186,7 @@ export async function uploadDocument(formData: FormData) {
 
   const useCase = formData.get("useCase") as string || "general";
 
-  // GET FILE (ensure exactly one file)
+  // GET FILE
   const files = formData.getAll("file")
   if (files.length === 0) {
     console.error('[Upload] No file provided');

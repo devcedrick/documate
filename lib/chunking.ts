@@ -22,7 +22,9 @@ export function chunkText(text: string, useCase: string = 'general'): TextChunk[
   const config = CHUNK_CONFIG[useCase] || CHUNK_CONFIG['general'];
   const separators = ["\n\n", "\n", ". ", "? ", "! ", " ", ""];
   
-  return recursiveSplit(text, separators, config.size, config.overlap);
+  const chunks = recursiveSplit(text, separators, config.size, config.overlap);
+  
+  return chunks.filter(chunk => chunk.content.trim().length > 0);
 }
 
 function recursiveSplit(
@@ -35,7 +37,6 @@ function recursiveSplit(
   let separator = separators[0];
   let nextSeparators = separators.slice(1);
 
-  // 1. Find the best separator to use
   let usedSeparator = "";
   for (const s of separators) {
     if (text.includes(s)) {
@@ -46,13 +47,12 @@ function recursiveSplit(
     }
   }
 
-  // 2. Split the text
+  // Split the text
   const splits = text.split(separator);
   let currentChunk: string[] = [];
   let currentLen = 0;
 
   for (const split of splits) {
-    // If a single split is ALREADY too big, we must recurse down on it
     const splitLen = split.length;
     
     if (splitLen > chunkSize) {
