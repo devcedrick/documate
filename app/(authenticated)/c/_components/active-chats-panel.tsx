@@ -40,7 +40,7 @@ const ActiveChatPanel = ({
           messages.map((msg, index) => {
             return (
               <div className={`w-full flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} whitespace-pre-wrap`} key={msg.id || index}>
-                <div className={`flex flex-col ${msg.role === 'user' ? 'items-end bg-primary/10 text-primary max-w-[70%]' : ''} p-3 rounded-lg `}>
+                <div className={`flex flex-col ${msg.role === 'user' ? 'items-end bg-primary/10 text-primary max-w-[70%]' : 'w-full'} p-3 rounded-lg `}>
                   {msg.parts.map((part, i) => {
                     switch (part.type) {
                       case 'text':

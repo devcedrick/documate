@@ -2,7 +2,7 @@ import React from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface MarkdownRendererProps {
   content: string;
@@ -23,9 +23,9 @@ const MarkdownRenderer = ({content}: MarkdownRendererProps) => {
         p: ({ children }) => <p className="leading-7 mb-0 last:mb-0 text-foreground/90">{children}</p>,
         
         // Lists - Compact with proper nesting handling
-        ul: ({ children }) => <ul className="mt-1 mb-0 ml-5 list-disc">{children}</ul>,
+        ul: ({ children }) => <ul className="mt-0 mb-0 ml-5 list-disc">{children}</ul>,
         ol: ({ children }) => <ol className="mt-1 mb-0 ml-5 list-decimal">{children}</ol>,
-        li: ({ children }) => <li className="pl-1 leading-normal [&>p]:!my-0 [&>ul]:!mt-1 [&>ul]:!mb-0 [&>ol]:!mt-1 [&>ol]:!mb-0">{children}</li>,
+        li: ({ children }) => <li className="pl-1 leading-normal [&>p]:my-0! [&>ul]:mt-1! [&>ul]:mb-0! [&>ol]:mt-1! [&>ol]:mb-0!">{children}</li>,
         
         // Code with syntax highlighting
         code: ({ className, children, ...props }) => {
@@ -38,18 +38,19 @@ const MarkdownRenderer = ({content}: MarkdownRendererProps) => {
               {children}
             </code>
           ) : (
-            <div className="relative my-4 rounded-lg overflow-hidden border border-border/50 shadow-sm bg-zinc-950">
-              <SyntaxHighlighter
-                style={oneDark}
-                language={language}
-                PreTag="div"
-                customStyle={{ margin: 0, borderRadius: 0, background: 'transparent' }}
-                showLineNumbers={true}
-                lineNumberStyle={{ minWidth: '2.5em', paddingRight: '1em', color: '#6c7280', textAlign: 'right' }}
-                wrapLines={true}
-              >
-                {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>
+            <div className="relative my-4 rounded-lg border border-border/50 shadow-sm w-full">
+               <div className="overflow-x-auto w-full">
+                <SyntaxHighlighter
+                  lineProps={{style: {wordBreak: 'break-all', whiteSpace: 'pre-wrap'}}}
+                  style={dracula}
+                  language={language}
+                  PreTag="div"
+                  customStyle={{ margin: 0, borderRadius: 8}}
+                  wrapLines={true}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              </div>
             </div>
           );
         },
