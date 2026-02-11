@@ -18,7 +18,7 @@ const ERROR_MESSAGES = {
   DOWNLOAD_FAILED: 'Failed to retrieve your document. Please try uploading again.',
   PARSE_FAILED: 'Could not read the document content. The file may be corrupted or password-protected.',
   CHUNK_FAILED: 'Failed to process document content. Please try a different file.',
-  EMBEDDING_FAILED: 'Failed to analyze document. The service may be temporarily busy.',
+  EMBEDDING_FAILED: 'Document is too large to process right now. Please try a smaller file or wait a few minutes.',
   DB_INSERT_FAILED: 'Failed to save document sections. Please try again.',
   UPDATE_FAILED: 'Document processed but status update failed.',
 } as const;
@@ -258,9 +258,20 @@ export async function uploadDocument(formData: FormData) {
   }
   console.log(`[Upload] Document record created: ${doc.id}`);
 
-  // Trigger document ingestion (async, don't await)
-  console.log('[Upload] Triggering document ingestion...');
-  ingestDocument(doc.id, filePath, useCase);
+  // Trigger document ingestion and wait for completion
+  console.log('[Upload] Starting document ingestion...');
+  const ingestResult = await ingestDocument(doc.id, filePath, useCase);
+  
+  if (ingestResult.error) {
+    console.error('[Upload] Ingestion failed:', ingestResult.error);
 
+    return { 
+      error: ingestResult.error,
+      doc,
+      processingFailed: true 
+    };
+  }
+
+  console.log('[Upload] Document fully processed');
   return { success: true, doc }
 }

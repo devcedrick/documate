@@ -99,7 +99,7 @@ const Page = () => {
       ): (
         <ChatSplitView 
           document={uploadedDoc}
-          onDeleteDoc={() => setUploadedDoc}  
+          onDeleteDoc={() => setUploadedDoc(null)}  
           messages={messages}
           input={input}
           handleInputChange={(e) => setInput(e.target.value)}

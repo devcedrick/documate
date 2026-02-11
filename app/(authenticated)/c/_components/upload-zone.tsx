@@ -31,13 +31,13 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
 
     if (result.error) {
       toast.error("Upload Failed", { description: result.error })
-    } else {
-      toast.success("File uploaded", { description: "Processing document..." })
+    } else if (result.success && result.doc) {
+      toast.success("File uploaded", { description: "Document ready!" })
       onUploadComplete(result.doc)
     }
 
     setIsUploading(false)
-  }, [onUploadComplete])
+  }, [onUploadComplete, useCase])
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
@@ -77,6 +77,9 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-10 w-10 text-primary animate-spin" />
             <p className="text-sm font-medium animate-pulse">Analyzing Document...</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Hang tight! Larger documents may take a bit longer to process.
+            </p>
           </div>
         ) : isDragActive ? (
           <div className="flex flex-col items-center gap-2">

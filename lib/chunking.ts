@@ -11,11 +11,11 @@ export type TextChunk = {
 
 // 1 Token ≈ 4 Characters.
 const CHUNK_CONFIG: Record<string, ChunkConfig> = {
-  student:   { size: 2000, overlap: 200 },
-  legal:     { size: 4000, overlap: 500 },
-  research:  { size: 3000, overlap: 400 },
-  technical: { size: 2500, overlap: 300 }, 
-  general:   { size: 1000, overlap: 150 },
+  student:   { size: 4000, overlap: 400 },
+  legal:     { size: 6000, overlap: 600 },
+  research:  { size: 5000, overlap: 500 },
+  technical: { size: 4500, overlap: 450 }, 
+  general:   { size: 3000, overlap: 300 },
 };
 
 export function chunkText(text: string, useCase: string = 'general'): TextChunk[] {

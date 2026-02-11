@@ -7,7 +7,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
-import ChatPanel from './chat-panel'
 import ChatInput from "./chat-input";
 import { WelcomeBanner } from "./welcome-banner";
 import { UploadedDocument } from '../page'
@@ -47,9 +46,9 @@ const ChatSplitView = ({
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel className="flex flex-col h-full overflow-hidden p-3">
+        <ResizablePanel className={`flex flex-col overflow-hidden p-3 ${!messages || messages.length === 0 ? 'justify-center' : ''}`}>
           {!messages || messages.length === 0 ? (
-            <div className='flex flex-col items-start justify-start w-full gap-2 mb-5 flex-1'>
+            <div className='mb-10'>
               <h1 className="text-3xl font-semibold">Ready to chat with your doc!</h1>
               <h2 className="text-base text-muted-foreground ">
                 {`Feel free to ask for a summary, specific details, or just start a conversation about the content. What’s on your mind?`}

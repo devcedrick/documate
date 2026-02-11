@@ -34,7 +34,8 @@ export async function getEmbeddings(chunks: string[], fileName: string, taskType
   }
 
   const model = google.embedding('gemini-embedding-001');
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 20;
+  const BATCH_DELAY_MS = 1500; 
   let allEmbeddings: any[] = [];
 
   for (let i = 0; i < validChunks.length; i += BATCH_SIZE) {
@@ -42,7 +43,12 @@ export async function getEmbeddings(chunks: string[], fileName: string, taskType
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
     const totalBatches = Math.ceil(validChunks.length / BATCH_SIZE);
     let attempt = 0;
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 5;
+    
+    if (i > 0) {
+      console.log(`[Embedding] Waiting ${BATCH_DELAY_MS}ms before next batch...`);
+      await new Promise(res => setTimeout(res, BATCH_DELAY_MS));
+    }
     
     console.log(`[Embedding] Processing batch ${batchNum}/${totalBatches}`);
     
