@@ -15,7 +15,7 @@ export default function ChatLayout({
 
   return (
     <ChatContextProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <main className="flex-1 flex flex-col min-h-dvh max-h-dvh p-5">
           {children}
