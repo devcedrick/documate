@@ -13,6 +13,14 @@ import {
   SidebarMenuButton,
   SidebarMenu,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { Pencil, Trash2, MoreHorizontal } from "lucide-react"
 
 interface ChatConversation {
   id: string
@@ -69,16 +77,10 @@ export function RecentChats({ isOpen }: RecentChatsProps) {
   return (
     <SidebarGroup className="flex-1 min-h-0">
       <SidebarGroupLabel className="truncate">Recent Chats</SidebarGroupLabel>
-      <SidebarGroupContent className="flex-1 min-h-0">
-        <ScrollArea className="h-full max-h-[calc(100vh-220px)]">
+      <SidebarGroupContent className="min-h-0 overflow-hidden">
+        <ScrollArea className="h-full max-h-[calc(100vh-220px)] [&>[data-slot=scroll-area-viewport]>div]:block!">
           <SidebarMenu>
-            {loading ? (
-              <SidebarMenuItem>
-                <SidebarMenuButton disabled>
-                  <span className="text-muted-foreground text-sm animate-pulse">Loading...</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ) : chats.length === 0 ? (
+            {chats.length === 0 ? (
               <SidebarMenuItem>
                 <SidebarMenuButton disabled>
                   <span className="text-muted-foreground text-sm">No conversations yet</span>
@@ -90,16 +92,44 @@ export function RecentChats({ isOpen }: RecentChatsProps) {
                 const title = chat.document?.doc_title || chat.document?.file_name || 'Untitled'
                 
                 return (
-                  <SidebarMenuItem key={chat.id}>
+                  <SidebarMenuItem key={chat.id} className="flex items-center gap-1 min-w-0 group/item">
                     <SidebarMenuButton 
                       asChild 
                       isActive={isActive}
                       tooltip={title}
+                      className="flex-1 min-w-0"
                     >
                       <Link href={`/c/${chat.id}`}>
                         <span className="truncate">{title}</span>
                       </Link>
                     </SidebarMenuButton>
+
+                    {/* DROPDOWN MENU */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="right">
+                        <DropdownMenuItem onClick={() => console.log('Rename', chat.id)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => console.log('Delete', chat.id)}
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </SidebarMenuItem>
                 )
               })
