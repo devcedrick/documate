@@ -3,8 +3,9 @@
 import React, { useEffect, useRef } from 'react'
 import { UIMessage } from '@ai-sdk/react'
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2 } from 'lucide-react'
+import {Loader2 } from 'lucide-react'
 import MarkdownRenderer from './markdown-renderer'
+import ResponseActions from './response-actions'
 
 interface ActiveChatPanelProps {
   messages: UIMessage[];
@@ -44,8 +45,10 @@ const ActiveChatPanel = ({
       <div className='flex flex-col gap-4 p-3'>
         {
           messages.map((msg, index) => {
+            const isAssistant = msg.role === 'assistant';
+            const hasTextPart = msg.parts?.some(part => part.type === 'text' && (part as { text: string }).text?.trim().length > 0);
             return (
-              <div className={`w-full flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} whitespace-pre-wrap`} key={msg.id || index}>
+              <div className={`w-full flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} whitespace-pre-wrap`} key={msg.id || index}>
                 <div className={`flex flex-col ${msg.role === 'user' ? 'items-end bg-primary/10 text-primary max-w-[70%]' : 'w-full'} p-3 rounded-lg `}>
                   {msg.parts.map((part, i) => {
                     switch (part.type) {
@@ -56,6 +59,9 @@ const ActiveChatPanel = ({
                     }
                   })}
                 </div>
+                {isAssistant && hasTextPart && (
+                  <ResponseActions message={msg} />
+                )}
               </div>
             )
           })
