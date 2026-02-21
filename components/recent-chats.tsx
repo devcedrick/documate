@@ -40,6 +40,7 @@ export function RecentChats({ isOpen }: RecentChatsProps) {
     const fetchChats = async () => {
       setLoading(true)
       const supabase = createClient()
+      const {data: {user}} = await supabase.auth.getUser()
       
       const { data, error } = await supabase
         .from('chats')
@@ -48,6 +49,7 @@ export function RecentChats({ isOpen }: RecentChatsProps) {
           created_at,
           document:documents (doc_title, file_name)
         `)
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
 
       if (!error && data) {
