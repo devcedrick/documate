@@ -28,7 +28,7 @@ export default async function ChatPage({
   const supabase = await createClient();
   const { chatId } = await params;
 
-  // Fetch Chat Session + Related Document + Messages (ordered by created_at)
+  // Fetch Chat Session + Related Document + Messages 
   const { data: chat, error } = await supabase
     .from('chats')
     .select(`
