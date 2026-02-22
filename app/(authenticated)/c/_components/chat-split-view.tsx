@@ -13,18 +13,26 @@ import { UploadedDocument } from '../page'
 import ActiveChatPanel from './active-chats-panel';
 import { ChatRequestOptions } from 'ai';
 
+export interface BranchMeta {
+  sibling_count: number;
+  sibling_index: number;
+  sibling_ids: string[];
+}
+
 interface ChatSplitViewProps {
   document: UploadedDocument | null;
   messages?: any[];
   input?: string;
   handleInputChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
-  onDeleteDoc?: () => void; 
+  onDeleteDoc?: () => void;
   disableButton: boolean;
   status?: 'submitted' | 'streaming' | 'ready' | 'error';
   regenerate: (options?: {
-      messageId?: string
-    } & ChatRequestOptions) => Promise<void>;
+    messageId?: string;
+  } & ChatRequestOptions) => Promise<void>;
+  branchMeta?: Map<string, BranchMeta>;
+  onSwitchBranch?: (messageId: string) => Promise<void>;
 }
 
 const ChatSplitView = ({
@@ -36,9 +44,11 @@ const ChatSplitView = ({
   onDeleteDoc,
   disableButton,
   status,
-  regenerate
+  regenerate,
+  branchMeta,
+  onSwitchBranch
 }: ChatSplitViewProps) => {
-  if(!document) return;
+  if (!document) return;
 
   return (
     <div className='flex items-center justify-center w-full h-full'>
@@ -60,7 +70,13 @@ const ChatSplitView = ({
               </h2>
             </div>
           ) : (
-            <ActiveChatPanel messages={messages} status={status}  handleRegeneration={regenerate}/>
+            <ActiveChatPanel
+              messages={messages}
+              status={status}
+              handleRegeneration={regenerate}
+              branchMeta={branchMeta}
+              onSwitchBranch={onSwitchBranch}
+            />
           )}
           <ChatInput 
             className="mt-auto shrink-0"

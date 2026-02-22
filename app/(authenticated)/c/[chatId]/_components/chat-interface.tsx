@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useChat, UIMessage } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useRouter } from 'next/navigation'
@@ -8,15 +8,9 @@ import ChatSplitView from '../../_components/chat-split-view'
 import { UploadedDocument } from '../../page'
 import { useChatContext } from '@/hooks/use-chat-context'
 import { toast } from 'sonner'
-
-// Types
-interface Message {
-  id: string
-  chat_id: string
-  role: 'user' | 'assistant'
-  content: string
-  created_at: string
-}
+import { switchBranch } from '../../actions/chat-actions'
+import type { BranchMessage } from '../page'
+import type { BranchMeta } from '../../_components/chat-split-view'
 
 interface UserConfig {
   useCase: string
@@ -26,17 +20,17 @@ interface UserConfig {
 
 interface ChatInterfaceProps {
   chatId: string
-  initialMessages: Message[]
+  initialMessages: BranchMessage[]
   document: UploadedDocument
 }
 
 // Convert database messages to UIMessage format for useChat
-function convertToUIMessages(dbMessages: Message[]): UIMessage[] {
+function convertToUIMessages(dbMessages: BranchMessage[]): UIMessage[] {
   return dbMessages.map((msg) => ({
     id: msg.id,
     role: msg.role,
     parts: [{ type: 'text' as const, text: msg.content }],
-    metadata: {createdAt: new Date(msg.created_at)},
+    metadata: { createdAt: new Date(msg.created_at) },
   }))
 }
 
@@ -89,6 +83,25 @@ export default function ChatInterface({
     }
   }, [error]);
 
+  // HANDLE BRANCH SWITCHING
+  const didSwitchRef = useRef(false);
+  useEffect(() => {
+    if (didSwitchRef.current && status === 'ready' && initialMessages.length > 0) {
+      setMessages(convertToUIMessages(initialMessages));
+      didSwitchRef.current = false;
+    }
+  }, [initialMessages, status, setMessages]);
+
+  const handleSwitchBranch = async (messageId: string) => {
+    const result = await switchBranch(chatId, messageId);
+    if (result?.error) {
+      toast.error('Failed to switch branch', { description: result.error });
+      return;
+    }
+    didSwitchRef.current = true;
+    router.refresh();
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim()) return
@@ -110,8 +123,22 @@ export default function ChatInterface({
     router.push('/c')
   }
 
+  const branchMeta = useMemo(() => {
+    const map = new Map<string, BranchMeta>()
+    for (const m of initialMessages) {
+      if (m.sibling_count != null && m.sibling_count > 1 && m.sibling_index != null && m.sibling_ids?.length) {
+        map.set(m.id, {
+          sibling_count: m.sibling_count,
+          sibling_index: m.sibling_index,
+          sibling_ids: m.sibling_ids
+        })
+      }
+    }
+    return map
+  }, [initialMessages])
+
   return (
-    <ChatSplitView 
+    <ChatSplitView
       document={document}
       onDeleteDoc={handleDeleteDocument}
       messages={messages}
@@ -122,12 +149,14 @@ export default function ChatInterface({
       status={status}
       regenerate={async (opts) => await regenerate({
         ...opts,
-        body: { 
+        body: {
           chatId,
           docId: document.id,
           config: userConfig
         }
       })}
+      branchMeta={branchMeta}
+      onSwitchBranch={handleSwitchBranch}
     />
   )
 }

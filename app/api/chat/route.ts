@@ -20,7 +20,7 @@ export const maxDuration = 30;
 export async function POST(request: Request) {
   console.log('[Chat API] Request received');
   
-  // Auth check outside stream
+  // AUTH CHECK
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   let activeChatId = chatId;
   let activeDocId = docId;
 
+  // STREAM OBJECT CREATION
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       try {
@@ -75,7 +76,8 @@ export async function POST(request: Request) {
           if (!activeDocId) {
             throw { context: 'chat_create', original: new Error('Missing documentId') };
           }
-
+          
+          // CREATE NEW CHAT
           const { data: newChat, error: chatError } = await supabase
             .from('chats')
             .insert([{
@@ -102,9 +104,10 @@ export async function POST(request: Request) {
         else {
           console.log('[Chat API] Fetching existing chat:', activeChatId);
           
+          // FETCH EXISTING CHAT
           const { data: chatData, error: chatFetchError } = await supabase
             .from('chats')
-            .select('document_id')
+            .select('document_id, head_message_id')
             .eq('id', activeChatId)
             .single();
 
@@ -120,6 +123,7 @@ export async function POST(request: Request) {
         console.log('[Chat API] Starting RAG pipeline...');
         const lastUserMessage = getMessageText(messages[messages.length - 1]);
         
+        // -- 1. EMBEDDING GENERATION
         let embeddings;
         try {
           embeddings = await getEmbeddings([lastUserMessage], 'chat-history', 'RETRIEVAL_QUERY');
@@ -128,12 +132,13 @@ export async function POST(request: Request) {
           throw { context: 'embedding', original: err };
         }
 
+        // -- 2. VECTOR SEARCH
         const queryVector = embeddings[0];
 
         console.log('[Chat API] Searching for relevant content...');
         const { data: chunks, error: matchingError } = await supabase.rpc('match_documents', {
           query_embedding: queryVector,
-          match_threshold: 0.5,
+          match_threshold: 0.7,
           match_count: 5,
           filter_document_id: activeDocId,
           filter_user_id: user.id,
@@ -155,6 +160,8 @@ export async function POST(request: Request) {
           context: contextText
         });
 
+        console.log('[Chat API] System prompt:', systemPrompt);
+
         // MESSAGE STREAM RESPONSE
         console.log('[Chat API] Starting LLM stream...');
         
@@ -164,55 +171,84 @@ export async function POST(request: Request) {
           messages: await convertToModelMessages(messages),
           onFinish: async ({ text }) => {
             console.log('[Chat API] Stream finished, saving messages...');
+            let newAssistantId: number | null = null;
             
-            // Only save user message for new messages, not for regeneration
+            // -- 3. SAVE MESSAGES
+            // NO REGENERATION
             if (!isRegenerate) {
-              const { error: userMsgError } = await supabase.from('messages').insert({
-                chat_id: activeChatId,
-                role: 'user',
-                content: lastUserMessage
-              });
-              
+              // New message: get current branch head for parent_id
+              const { data: chatRow } = await supabase
+                .from('chats')
+                .select('head_message_id')
+                .eq('id', activeChatId)
+                .single();
+              const parentId = chatRow?.head_message_id ?? null;
+
+              const { data: userMsg, error: userMsgError } = await supabase
+                .from('messages')
+                .insert({
+                  chat_id: activeChatId,
+                  role: 'user',
+                  content: lastUserMessage,
+                  parent_id: parentId
+                })
+                .select('id')
+                .single();
+
               if (userMsgError) {
                 console.error('[Chat API] Failed to save user message:', userMsgError);
               }
-            }
 
-            // For regeneration: delete the old assistant message and all messages after it (branch truncation)
-            if (isRegenerate && messageId) {
-              const { data: oldMsg } = await supabase
+              const { data: assistantMsg, error: assistantMsgError } = await supabase
                 .from('messages')
-                .select('created_at')
-                .eq('id', messageId)
-                .eq('chat_id', activeChatId)
+                .insert({
+                  chat_id: activeChatId,
+                  role: 'assistant',
+                  content: text,
+                  parent_id: userMsg?.id ?? null
+                })
+                .select('id')
                 .single();
 
-              if (oldMsg) {
-                await supabase
-                  .from('messages')
-                  .delete()
-                  .eq('chat_id', activeChatId)
-                  .gte('created_at', oldMsg.created_at);
+              if (assistantMsgError) {
+                console.error('[Chat API] Failed to save assistant message:', assistantMsgError);
+              } else if (assistantMsg?.id) {
+                newAssistantId = assistantMsg.id;
+              }
+            } else {
+              // REGENERATION
+              const parentId = messages[messages.length - 1]?.id ?? null;
+
+              const { data: assistantMsg, error: assistantMsgError } = await supabase
+                .from('messages')
+                .insert({
+                  chat_id: activeChatId,
+                  role: 'assistant',
+                  content: text,
+                  parent_id: parentId
+                })
+                .select('id')
+                .single();
+
+              if (assistantMsgError) {
+                console.error('[Chat API] Failed to save assistant message:', assistantMsgError);
+              } else if (assistantMsg?.id) {
+                newAssistantId = assistantMsg.id;
               }
             }
 
-            // Save Assistant Message
-            const { error: assistantMsgError } = await supabase.from('messages').insert({
-              chat_id: activeChatId,
-              role: 'assistant',
-              content: text
-            });
-            
-            if (assistantMsgError) {
-              console.error('[Chat API] Failed to save assistant message:', assistantMsgError);
-              // Don't throw here - response was already sent
+            if (newAssistantId != null) {
+              await supabase
+                .from('chats')
+                .update({ head_message_id: newAssistantId })
+                .eq('id', activeChatId);
             }
-            
+
             console.log('[Chat API] Messages saved successfully');
           },
         });
 
-        await writer.merge(result.toUIMessageStream());
+        writer.merge(result.toUIMessageStream());
         
       } catch (err: any) {
         // Extract context and original error

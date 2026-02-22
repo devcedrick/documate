@@ -3,15 +3,18 @@
 import React, { useEffect, useRef } from 'react'
 import { UIMessage } from '@ai-sdk/react'
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import MarkdownRenderer from './markdown-renderer'
 import ResponseActions from './response-actions'
 import { ChatRequestOptions } from 'ai'
+import type { BranchMeta } from './chat-split-view'
 
 interface ActiveChatPanelProps {
   messages: UIMessage[];
   status?: 'submitted' | 'streaming' | 'ready' | 'error';
-  handleRegeneration: (options?: {messageId?: string} & ChatRequestOptions) => Promise<void>;
+  handleRegeneration: (options?: { messageId?: string } & ChatRequestOptions) => Promise<void>;
+  branchMeta?: Map<string, BranchMeta>;
+  onSwitchBranch?: (messageId: string) => Promise<void>;
 }
 
 const ThinkingIndicator = () => (
@@ -26,7 +29,9 @@ const ThinkingIndicator = () => (
 const ActiveChatPanel = ({
   messages,
   status,
-  handleRegeneration
+  handleRegeneration,
+  branchMeta,
+  onSwitchBranch
 }: ActiveChatPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isStreaming = status === 'submitted' || status === 'streaming';
@@ -63,7 +68,12 @@ const ActiveChatPanel = ({
                   })}
                 </div>
                 {isAssistant && hasTextPart && (
-                  <ResponseActions message={msg} handleRegeneration={handleRegeneration}/>
+                  <ResponseActions
+                    message={msg}
+                    handleRegeneration={handleRegeneration}
+                    branchMeta={msg.id ? branchMeta?.get(msg.id) : undefined}
+                    onSwitchBranch={onSwitchBranch}
+                  />
                 )}
               </div>
             )

@@ -1,14 +1,17 @@
 import { createClient } from '@/utils/supabase/server';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import ChatInterface from './_components/chat-interface';
 import { UploadedDocument } from '../page';
 
-interface Message {
+export interface BranchMessage {
   id: string;
   chat_id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  sibling_count?: number;
+  sibling_index?: number;
+  sibling_ids?: string[];
 }
 
 interface Chat {
@@ -17,44 +20,60 @@ interface Chat {
   document_id: string;
   doc_title: string;
   document: UploadedDocument;
-  messages: Message[];
 }
 
-export default async function ChatPage({ 
-  params 
-}: { 
-  params: Promise<{ chatId: string }> 
+export default async function ChatPage({
+  params
+}: {
+  params: Promise<{ chatId: string }>;
 }) {
   const supabase = await createClient();
   const { chatId } = await params;
 
-  // Fetch Chat Session + Related Document + Messages 
-  const { data: chat, error } = await supabase
+  const { data: chat, error: chatError } = await supabase
     .from('chats')
     .select(`
       *,
-      document:documents (*), 
-      messages (*)
+      document:documents (*)
     `)
     .eq('id', chatId)
-    .order('created_at', { referencedTable: 'messages', ascending: true })
     .single();
 
-  if (error || !chat) {
-    console.error("Chat Fetch Error:", error);
+  if (chatError || !chat) {
+    console.error('Chat Fetch Error:', chatError);
     return notFound();
   }
 
   const typedChat = chat as Chat;
+  let branchMessages: BranchMessage[] = [];
+
+  const { data: branchRows } = await supabase.rpc('get_chat_branch', {
+    p_chat_id: chatId
+  });
+
+  if (branchRows && Array.isArray(branchRows)) {
+    branchMessages = branchRows.map((row: Record<string, unknown>) => ({
+      id: String(row.id),
+      chat_id: String(row.chat_id),
+      role: row.role as 'user' | 'assistant',
+      content: String(row.content ?? ''),
+      created_at: String(row.created_at ?? ''),
+      ...(row.sibling_count != null && Number(row.sibling_count) > 1 && {
+        sibling_count: Number(row.sibling_count),
+        sibling_index: Number(row.sibling_index),
+        sibling_ids: (row.sibling_ids as number[] | null)?.map(String) ?? []
+      })
+    }));
+  }
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full gap-2">
       <header className="font-medium text-base">
         {typedChat.document?.doc_title || 'Chat'}
       </header>
-      <ChatInterface 
+      <ChatInterface
         chatId={typedChat.id}
-        initialMessages={typedChat.messages || []}
+        initialMessages={branchMessages}
         document={typedChat.document}
       />
     </div>
