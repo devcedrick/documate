@@ -43,7 +43,8 @@ export async function POST(request: Request) {
     }), { status: 400 });
   }
 
-  const { docId, chatId, messages, config } = requestBody;
+  const { docId, chatId, messages, config, trigger, messageId } = requestBody;
+  const isRegenerate = trigger === 'regenerate-message';
 
   if (!docId) {
     console.error('[Chat API] Missing documentId');
@@ -164,16 +165,35 @@ export async function POST(request: Request) {
           onFinish: async ({ text }) => {
             console.log('[Chat API] Stream finished, saving messages...');
             
-            // Save User Message
-            const { error: userMsgError } = await supabase.from('messages').insert({
-              chat_id: activeChatId,
-              role: 'user',
-              content: lastUserMessage
-            });
-            
-            if (userMsgError) {
-              console.error('[Chat API] Failed to save user message:', userMsgError);
-              // Don't throw here - response was already sent
+            // Only save user message for new messages, not for regeneration
+            if (!isRegenerate) {
+              const { error: userMsgError } = await supabase.from('messages').insert({
+                chat_id: activeChatId,
+                role: 'user',
+                content: lastUserMessage
+              });
+              
+              if (userMsgError) {
+                console.error('[Chat API] Failed to save user message:', userMsgError);
+              }
+            }
+
+            // For regeneration: delete the old assistant message and all messages after it (branch truncation)
+            if (isRegenerate && messageId) {
+              const { data: oldMsg } = await supabase
+                .from('messages')
+                .select('created_at')
+                .eq('id', messageId)
+                .eq('chat_id', activeChatId)
+                .single();
+
+              if (oldMsg) {
+                await supabase
+                  .from('messages')
+                  .delete()
+                  .eq('chat_id', activeChatId)
+                  .gte('created_at', oldMsg.created_at);
+              }
             }
 
             // Save Assistant Message

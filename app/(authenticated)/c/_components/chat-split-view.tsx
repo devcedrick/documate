@@ -11,6 +11,7 @@ import ChatInput from "./chat-input";
 import { WelcomeBanner } from "./welcome-banner";
 import { UploadedDocument } from '../page'
 import ActiveChatPanel from './active-chats-panel';
+import { ChatRequestOptions } from 'ai';
 
 interface ChatSplitViewProps {
   document: UploadedDocument | null;
@@ -21,6 +22,9 @@ interface ChatSplitViewProps {
   onDeleteDoc?: () => void; 
   disableButton: boolean;
   status?: 'submitted' | 'streaming' | 'ready' | 'error';
+  regenerate: (options?: {
+      messageId?: string
+    } & ChatRequestOptions) => Promise<void>;
 }
 
 const ChatSplitView = ({
@@ -31,7 +35,8 @@ const ChatSplitView = ({
   handleSubmit,
   onDeleteDoc,
   disableButton,
-  status
+  status,
+  regenerate
 }: ChatSplitViewProps) => {
   if(!document) return;
 
@@ -55,7 +60,7 @@ const ChatSplitView = ({
               </h2>
             </div>
           ) : (
-            <ActiveChatPanel messages={messages} status={status} />
+            <ActiveChatPanel messages={messages} status={status}  handleRegeneration={regenerate}/>
           )}
           <ChatInput 
             className="mt-auto shrink-0"

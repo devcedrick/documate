@@ -33,7 +33,7 @@ const Page = () => {
   }
 
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
@@ -106,6 +106,14 @@ const Page = () => {
           handleSubmit={handleSubmit}
           disableButton={status !== 'ready' || input.trim() === ''}
           status={status}
+          regenerate={async (opts) => await regenerate({
+            ...opts,
+            body: { 
+              chatId,
+              docId: uploadedDoc?.id,
+              config: userConfig
+            }
+          })}
         />
       )}
     </div>

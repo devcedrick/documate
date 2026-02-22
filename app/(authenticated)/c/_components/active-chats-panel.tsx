@@ -6,10 +6,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {Loader2 } from 'lucide-react'
 import MarkdownRenderer from './markdown-renderer'
 import ResponseActions from './response-actions'
+import { ChatRequestOptions } from 'ai'
 
 interface ActiveChatPanelProps {
   messages: UIMessage[];
   status?: 'submitted' | 'streaming' | 'ready' | 'error';
+  handleRegeneration: (options?: {messageId?: string} & ChatRequestOptions) => Promise<void>;
 }
 
 const ThinkingIndicator = () => (
@@ -23,7 +25,8 @@ const ThinkingIndicator = () => (
 
 const ActiveChatPanel = ({
   messages,
-  status
+  status,
+  handleRegeneration
 }: ActiveChatPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isStreaming = status === 'submitted' || status === 'streaming';
@@ -60,7 +63,7 @@ const ActiveChatPanel = ({
                   })}
                 </div>
                 {isAssistant && hasTextPart && (
-                  <ResponseActions message={msg} />
+                  <ResponseActions message={msg} handleRegeneration={handleRegeneration}/>
                 )}
               </div>
             )

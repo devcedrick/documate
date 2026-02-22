@@ -55,12 +55,11 @@ export default function ChatInterface({
     preference: user?.responsePreference || 'detailed',
     strictness: user?.strictnessLevel || 'balanced',
   }
+
   
-  // Convert DB messages to UI format
-  const convertedInitialMessages = convertToUIMessages(initialMessages)
-  
-  const { messages, sendMessage, status, setMessages, error } = useChat({
+  const { messages, sendMessage, status, setMessages, error, regenerate } = useChat({
     id: chatId,
+    messages: convertToUIMessages(initialMessages),
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
@@ -89,13 +88,6 @@ export default function ChatInterface({
       });
     }
   }, [error]);
-
-  // Set initial messages on mount
-  useEffect(() => {
-    if (convertedInitialMessages.length > 0 && messages.length === 0) {
-      setMessages(convertedInitialMessages)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -128,6 +120,14 @@ export default function ChatInterface({
       handleSubmit={handleSubmit}
       disableButton={status !== 'ready' || input.trim() === ''}
       status={status}
+      regenerate={async (opts) => await regenerate({
+        ...opts,
+        body: { 
+          chatId,
+          docId: document.id,
+          config: userConfig
+        }
+      })}
     />
   )
 }
