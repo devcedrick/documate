@@ -1,18 +1,20 @@
-"use client"
+"use client";
 
-import React, { useEffect, useRef } from 'react'
-import { UIMessage } from '@ai-sdk/react'
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2 } from 'lucide-react'
-import MarkdownRenderer from './markdown-renderer'
-import ResponseActions from './response-actions'
-import { ChatRequestOptions } from 'ai'
-import type { BranchMeta } from './chat-split-view'
+import React, { useEffect, useRef } from "react";
+import { UIMessage } from "@ai-sdk/react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2 } from "lucide-react";
+import MarkdownRenderer from "./markdown-renderer";
+import ResponseActions from "./response-actions";
+import { ChatRequestOptions } from "ai";
+import type { BranchMeta } from "./chat-split-view";
 
 interface ActiveChatPanelProps {
   messages: UIMessage[];
-  status?: 'submitted' | 'streaming' | 'ready' | 'error';
-  handleRegeneration: (options?: { messageId?: string } & ChatRequestOptions) => Promise<void>;
+  status?: "submitted" | "streaming" | "ready" | "error";
+  handleRegeneration: (
+    options?: { messageId?: string } & ChatRequestOptions,
+  ) => Promise<void>;
   branchMeta?: Map<string, BranchMeta>;
   onSwitchBranch?: (messageId: string) => Promise<void>;
 }
@@ -21,7 +23,7 @@ const ThinkingIndicator = () => (
   <div className="w-full flex justify-start">
     <div className="flex items-center gap-2 p-3 rounded-lg text-muted-foreground">
       <Loader2 className="h-4 w-4 animate-spin" />
-      <span className="text-sm">Thinking...</span>
+      <span className="text-sm">Reading sources...</span>
     </div>
   </div>
 );
@@ -31,61 +33,76 @@ const ActiveChatPanel = ({
   status,
   handleRegeneration,
   branchMeta,
-  onSwitchBranch
+  onSwitchBranch,
 }: ActiveChatPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isStreaming = status === 'submitted' || status === 'streaming';
-  
+  const isStreaming = status === "submitted" || status === "streaming";
+
   const lastMessage = messages[messages.length - 1];
-  const lastAssistantHasContent = lastMessage?.role === 'assistant' && 
-    lastMessage.parts?.some(part => part.type === 'text' && (part as { text: string }).text?.trim().length > 0);
-  
+  const lastAssistantHasContent =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts?.some(
+      (part) =>
+        part.type === "text" &&
+        (part as { text: string }).text?.trim().length > 0,
+    );
+
   const showThinking = isStreaming && !lastAssistantHasContent;
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, showThinking]);
 
   return (
-    <ScrollArea className='flex-1 w-full min-h-0 p-2 mb-2'>
-      <div className='flex flex-col gap-4 p-3'>
-        {
-          messages.map((msg, index) => {
-            const isAssistant = msg.role === 'assistant';
-            const hasTextPart = msg.parts?.some(part => part.type === 'text' && (part as { text: string }).text?.trim().length > 0);
-            return (
-              <div className={`w-full flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} whitespace-pre-wrap`} key={msg.id || index}>
-                <div className={`flex flex-col ${msg.role === 'user' ? 'items-end bg-primary/10 text-primary max-w-[70%]' : 'w-full'} p-3 rounded-lg `}>
-                  {msg.parts.map((part, i) => {
-                    switch (part.type) {
-                      case 'text':
-                        return msg.role === 'assistant' 
-                          ? <MarkdownRenderer key={`${msg.id}-${i}`} content={part.text} />
-                          : <div key={`${msg.id}-${i}`}>{part.text}</div>;
-                    }
-                  })}
-                </div>
-                {isAssistant && hasTextPart && (
-                  <ResponseActions
-                    message={msg}
-                    handleRegeneration={handleRegeneration}
-                    branchMeta={msg.id ? branchMeta?.get(msg.id) : undefined}
-                    onSwitchBranch={onSwitchBranch}
-                  />
-                )}
+    <ScrollArea className="flex-1 w-full min-h-0 p-2 mb-2">
+      <div className="flex flex-col gap-4 p-3">
+        {messages.map((msg, index) => {
+          const isAssistant = msg.role === "assistant";
+          const hasTextPart = msg.parts?.some(
+            (part) =>
+              part.type === "text" &&
+              (part as { text: string }).text?.trim().length > 0,
+          );
+          return (
+            <div
+              className={`w-full flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} whitespace-pre-wrap`}
+              key={msg.id || index}
+            >
+              <div
+                className={`flex flex-col ${msg.role === "user" ? "items-end bg-primary/10 text-primary max-w-[70%]" : "w-full"} p-3 rounded-lg `}
+              >
+                {msg.parts.map((part, i) => {
+                  switch (part.type) {
+                    case "text":
+                      return msg.role === "assistant" ? (
+                        <MarkdownRenderer
+                          key={`${msg.id}-${i}`}
+                          content={part.text}
+                        />
+                      ) : (
+                        <div key={`${msg.id}-${i}`}>{part.text}</div>
+                      );
+                  }
+                })}
               </div>
-            )
-          })
-        }
-        {showThinking && (
-          <ThinkingIndicator />
-        )}
+              {isAssistant && hasTextPart && (
+                <ResponseActions
+                  message={msg}
+                  handleRegeneration={handleRegeneration}
+                  branchMeta={msg.id ? branchMeta?.get(msg.id) : undefined}
+                  onSwitchBranch={onSwitchBranch}
+                />
+              )}
+            </div>
+          );
+        })}
+        {showThinking && <ThinkingIndicator />}
         <div ref={scrollRef} />
       </div>
     </ScrollArea>
-  )
-}
+  );
+};
 
-export default ActiveChatPanel
+export default ActiveChatPanel;

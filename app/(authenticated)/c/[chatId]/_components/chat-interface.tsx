@@ -1,27 +1,27 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useChat, UIMessage } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import { useRouter } from 'next/navigation'
-import ChatSplitView from '../../_components/chat-split-view'
-import { UploadedDocument } from '../../page'
-import { useChatContext } from '@/hooks/use-chat-context'
-import { toast } from 'sonner'
-import { switchBranch } from '../../actions/chat-actions'
-import type { BranchMessage } from '../page'
-import type { BranchMeta } from '../../_components/chat-split-view'
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useChat, UIMessage } from "@ai-sdk/react";
+import { ChatRequestOptions, DefaultChatTransport } from "ai";
+import { useRouter } from "next/navigation";
+import ChatSplitView from "../../_components/chat-split-view";
+import { UploadedDocument } from "../../page";
+import { useChatContext } from "@/hooks/use-chat-context";
+import { toast } from "sonner";
+import { switchBranch } from "../../actions/chat-actions";
+import type { BranchMessage } from "../page";
+import type { BranchMeta } from "../../_components/chat-split-view";
 
 interface UserConfig {
-  useCase: string
-  preference: string
-  strictness: string
+  useCase: string;
+  preference: string;
+  strictness: string;
 }
 
 interface ChatInterfaceProps {
-  chatId: string
-  initialMessages: BranchMessage[]
-  document: UploadedDocument
+  chatId: string;
+  initialMessages: BranchMessage[];
+  document: UploadedDocument;
 }
 
 // Convert database messages to UIMessage format for useChat
@@ -29,56 +29,57 @@ function convertToUIMessages(dbMessages: BranchMessage[]): UIMessage[] {
   return dbMessages.map((msg) => ({
     id: msg.id,
     role: msg.role,
-    parts: [{ type: 'text' as const, text: msg.content }],
+    parts: [{ type: "text" as const, text: msg.content }],
     metadata: { createdAt: new Date(msg.created_at) },
-  }))
+  }));
 }
 
-export default function ChatInterface({ 
-  chatId, 
-  initialMessages, 
-  document, 
+export default function ChatInterface({
+  chatId,
+  initialMessages,
+  document,
 }: ChatInterfaceProps) {
-  const router = useRouter()
-  const [input, setInput] = useState("")
+  const router = useRouter();
+  const [input, setInput] = useState("");
 
   // User Configs
   const user = useChatContext();
   const userConfig: UserConfig = {
-    useCase: user?.useCase || 'general',
-    preference: user?.responsePreference || 'detailed',
-    strictness: user?.strictnessLevel || 'balanced',
-  }
+    useCase: user?.useCase || "general",
+    preference: user?.responsePreference || "detailed",
+    strictness: user?.strictnessLevel || "balanced",
+  };
 
-  
-  const { messages, sendMessage, status, setMessages, error, regenerate } = useChat({
-    id: chatId,
-    messages: convertToUIMessages(initialMessages),
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
-    onData: ({ data, type }) => {
-      // Handle custom error events from stream
-      if (type === 'data-error') {
-        const errorData = data as { message: string; code: string };
-        console.error('[Chat] Stream error:', errorData);
-        toast.error('Error', { description: errorData.message });
-      }
-    },
-    onError: (err) => {
-      console.error('[Chat] Error:', err);
-      toast.error('Error', { 
-        description: err.message || 'Failed to send message. Please try again.' 
-      });
-    },
-  })
+  const { messages, sendMessage, status, setMessages, error, regenerate } =
+    useChat({
+      id: chatId,
+      messages: convertToUIMessages(initialMessages),
+      transport: new DefaultChatTransport({
+        api: "/api/chat",
+      }),
+      onData: ({ data, type }) => {
+        // Handle custom error events from stream
+        if (type === "data-error") {
+          const errorData = data as { message: string; code: string };
+          console.error("[Chat] Stream error:", errorData);
+          toast.error("Error", { description: errorData.message });
+        }
+      },
+      onError: (err) => {
+        console.error("[Chat] Error:", err);
+        toast.error("Error", {
+          description:
+            err.message || "Failed to send message. Please try again.",
+        });
+      },
+    });
 
   // Show error toast when error state changes
   useEffect(() => {
     if (error) {
-      console.error('[Chat] Hook error:', error);
-      toast.error('Error', { 
-        description: error.message || 'Something went wrong. Please try again.' 
+      console.error("[Chat] Hook error:", error);
+      toast.error("Error", {
+        description: error.message || "Something went wrong. Please try again.",
       });
     }
   }, [error]);
@@ -86,7 +87,11 @@ export default function ChatInterface({
   // HANDLE BRANCH SWITCHING
   const didSwitchRef = useRef(false);
   useEffect(() => {
-    if (didSwitchRef.current && status === 'ready' && initialMessages.length > 0) {
+    if (
+      didSwitchRef.current &&
+      status === "ready" &&
+      initialMessages.length > 0
+    ) {
       setMessages(convertToUIMessages(initialMessages));
       didSwitchRef.current = false;
     }
@@ -95,47 +100,79 @@ export default function ChatInterface({
   const handleSwitchBranch = async (messageId: string) => {
     const result = await switchBranch(chatId, messageId);
     if (result?.error) {
-      toast.error('Failed to switch branch', { description: result.error });
+      toast.error("Failed to switch branch", { description: result.error });
       return;
     }
     didSwitchRef.current = true;
     router.refresh();
   };
 
+  // HANDLE MESSAGE SUBMISSION
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!input.trim()) return
-    
+    e.preventDefault();
+    if (!input.trim()) return;
+
     sendMessage(
-      { parts: [{ type: 'text', text: input }] },
-      { 
-        body: { 
+      { parts: [{ type: "text", text: input }] },
+      {
+        body: {
           chatId,
           docId: document.id,
-          config: userConfig
-        } 
-      }
-    )
-    setInput("")
-  }
+          config: userConfig,
+        },
+      },
+    );
+    setInput("");
+  };
 
+  // HANDLE DOCUMENT DELETION
   const handleDeleteDocument = () => {
-    router.push('/c')
-  }
+    router.push("/c");
+  };
 
+  // HANDLE BRANCH META
   const branchMeta = useMemo(() => {
-    const map = new Map<string, BranchMeta>()
+    const map = new Map<string, BranchMeta>();
     for (const m of initialMessages) {
-      if (m.sibling_count != null && m.sibling_count > 1 && m.sibling_index != null && m.sibling_ids?.length) {
+      if (
+        m.sibling_count != null &&
+        m.sibling_count > 1 &&
+        m.sibling_index != null &&
+        m.sibling_ids?.length
+      ) {
         map.set(m.id, {
           sibling_count: m.sibling_count,
           sibling_index: m.sibling_index,
-          sibling_ids: m.sibling_ids
-        })
+          sibling_ids: m.sibling_ids,
+        });
       }
     }
-    return map
-  }, [initialMessages])
+    return map;
+  }, [initialMessages]);
+
+  const wasRegenerating = useRef(false);
+  useEffect(() => {
+    if (status === "ready" && wasRegenerating.current) {
+      wasRegenerating.current = false;
+      // Also sync useChat's messages with the fresh initialMessages
+      // so that message IDs match the branchMeta keys
+      didSwitchRef.current = true;
+      router.refresh();
+    }
+  }, [status, router]);
+
+  const handleRegeneration = async (opts?: ChatRequestOptions) => {
+    if (wasRegenerating.current) return;
+    wasRegenerating.current = true;
+    await regenerate({
+      ...opts,
+      body: {
+        chatId,
+        docId: document.id,
+        config: userConfig,
+      },
+    });
+  };
 
   return (
     <ChatSplitView
@@ -145,18 +182,11 @@ export default function ChatInterface({
       input={input}
       handleInputChange={(e) => setInput(e.target.value)}
       handleSubmit={handleSubmit}
-      disableButton={status !== 'ready' || input.trim() === ''}
+      disableButton={status !== "ready" || input.trim() === ""}
       status={status}
-      regenerate={async (opts) => await regenerate({
-        ...opts,
-        body: {
-          chatId,
-          docId: document.id,
-          config: userConfig
-        }
-      })}
+      regenerate={handleRegeneration}
       branchMeta={branchMeta}
       onSwitchBranch={handleSwitchBranch}
     />
-  )
+  );
 }
