@@ -34,7 +34,7 @@ interface ChatSplitViewProps {
       messageId?: string;
     } & ChatRequestOptions,
   ) => Promise<void>;
-  branchMeta?: Map<string, BranchMeta>;
+  branchMeta?: Map<string, BranchMeta> | null;
   onSwitchBranch?: (messageId: string) => Promise<void>;
 }
 
@@ -74,7 +74,7 @@ const ChatSplitView = ({
               <h1 className="text-3xl font-semibold">
                 Ready to chat with your doc!
               </h1>
-              <h2 className="text-base text-muted-foreground ">
+              <h2 className="text-base text-muted-foreground my-2">
                 {`Feel free to ask for a summary, specific details, or just start a conversation about the content. What’s on your mind?`}
               </h2>
             </div>

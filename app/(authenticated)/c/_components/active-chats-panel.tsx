@@ -15,7 +15,7 @@ interface ActiveChatPanelProps {
   handleRegeneration: (
     options?: { messageId?: string } & ChatRequestOptions,
   ) => Promise<void>;
-  branchMeta?: Map<string, BranchMeta>;
+  branchMeta?: Map<string, BranchMeta> | null;
   onSwitchBranch?: (messageId: string) => Promise<void>;
 }
 
@@ -91,7 +91,7 @@ const ActiveChatPanel = ({
                 <ResponseActions
                   message={msg}
                   handleRegeneration={handleRegeneration}
-                  branchMeta={msg.id ? branchMeta?.get(msg.id) : undefined}
+                  branchMeta={branchMeta?.get(msg.id)}
                   onSwitchBranch={onSwitchBranch}
                 />
               )}

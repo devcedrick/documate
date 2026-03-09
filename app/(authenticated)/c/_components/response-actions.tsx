@@ -34,8 +34,6 @@ const ResponseActions = ({
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  console.log(branchMeta);
-
   const showBranchNav =
     branchMeta && branchMeta.sibling_count > 1 && onSwitchBranch;
   const prevId =

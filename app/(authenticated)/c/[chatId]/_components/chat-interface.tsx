@@ -8,9 +8,10 @@ import ChatSplitView from "../../_components/chat-split-view";
 import { UploadedDocument } from "../../page";
 import { useChatContext } from "@/hooks/use-chat-context";
 import { toast } from "sonner";
-import { switchBranch } from "../../actions/chat-actions";
+import { syncHeadMessage } from "../../actions/chat-actions";
 import type { BranchMessage } from "../page";
 import type { BranchMeta } from "../../_components/chat-split-view";
+import { useMessageTree } from "@/hooks/use-message-tree";
 
 interface UserConfig {
   useCase: string;
@@ -20,6 +21,7 @@ interface UserConfig {
 
 interface ChatInterfaceProps {
   chatId: string;
+  headMessageId: string;
   initialMessages: BranchMessage[];
   document: UploadedDocument;
 }
@@ -36,6 +38,7 @@ function convertToUIMessages(dbMessages: BranchMessage[]): UIMessage[] {
 
 export default function ChatInterface({
   chatId,
+  headMessageId,
   initialMessages,
   document,
 }: ChatInterfaceProps) {
@@ -50,19 +53,69 @@ export default function ChatInterface({
     strictness: user?.strictnessLevel || "balanced",
   };
 
+  const {
+    buildTreeFromDatabase,
+    switchBranch,
+    branchMeta,
+    activeBranch,
+    insertMessage,
+    reconcileIds,
+  } = useMessageTree();
+
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      buildTreeFromDatabase(initialMessages, headMessageId);
+    }
+  }, []);
+
   const { messages, sendMessage, status, setMessages, error, regenerate } =
     useChat({
       id: chatId,
-      messages: convertToUIMessages(initialMessages),
       transport: new DefaultChatTransport({
         api: "/api/chat",
       }),
       onData: ({ data, type }) => {
         // Handle custom error events from stream
+        const lastMsg = messages[messages.length - 1];
+        const textParts = lastMsg?.parts?.filter(
+          (part) => part.type === "text",
+        ) as { text: string }[];
+        const content = textParts?.map((part) => part.text).join(" ") || "";
+
         if (type === "data-error") {
           const errorData = data as { message: string; code: string };
           console.error("[Chat] Stream error:", errorData);
           toast.error("Error", { description: errorData.message });
+        }
+        if (type === "data-messages_saved") {
+          const { tempId, userMsg, assistantMsg } = data as {
+            tempId: string;
+            userMsg: { id: string; parent_id: string };
+            assistantMsg: { id: string; parent_id: string };
+          };
+          reconcileIds(tempId, userMsg.id);
+          insertMessage({
+            id: assistantMsg.id,
+            chat_id: chatId,
+            role: "assistant",
+            content: content,
+            created_at: new Date().toISOString(),
+            parent_id: assistantMsg.parent_id,
+          });
+        }
+        if (type === "data-message_regenerated") {
+          console.log("[onData] data-message_regenerated received", data);
+          const { assistantMsg } = data as {
+            assistantMsg: { id: string; parent_id: string };
+          };
+          insertMessage({
+            id: assistantMsg.id,
+            chat_id: chatId,
+            role: "assistant",
+            content: content,
+            created_at: new Date().toISOString(),
+            parent_id: assistantMsg.parent_id,
+          });
         }
       },
       onError: (err) => {
@@ -84,27 +137,16 @@ export default function ChatInterface({
     }
   }, [error]);
 
-  // HANDLE BRANCH SWITCHING
-  const didSwitchRef = useRef(false);
   useEffect(() => {
-    if (
-      didSwitchRef.current &&
-      status === "ready" &&
-      initialMessages.length > 0
-    ) {
-      setMessages(convertToUIMessages(initialMessages));
-      didSwitchRef.current = false;
+    if (status === "ready" && activeBranch.length > 0) {
+      setMessages(convertToUIMessages(activeBranch));
     }
-  }, [initialMessages, status, setMessages]);
+  }, [activeBranch]);
 
+  // HANDLE BRANCH SWITCHING
   const handleSwitchBranch = async (messageId: string) => {
-    const result = await switchBranch(chatId, messageId);
-    if (result?.error) {
-      toast.error("Failed to switch branch", { description: result.error });
-      return;
-    }
-    didSwitchRef.current = true;
-    router.refresh();
+    switchBranch(messageId);
+    syncHeadMessage(chatId, messageId);
   };
 
   // HANDLE MESSAGE SUBMISSION
@@ -112,10 +154,21 @@ export default function ChatInterface({
     e.preventDefault();
     if (!input.trim()) return;
 
+    const tempId = crypto.randomUUID();
+    insertMessage({
+      id: tempId,
+      chat_id: chatId,
+      role: "user",
+      content: input,
+      created_at: new Date().toISOString(),
+      parent_id: activeBranch[activeBranch.length - 1].id,
+    });
+
     sendMessage(
       { parts: [{ type: "text", text: input }] },
       {
         body: {
+          tempId,
           chatId,
           docId: document.id,
           config: userConfig,
@@ -130,40 +183,7 @@ export default function ChatInterface({
     router.push("/c");
   };
 
-  // HANDLE BRANCH META
-  const branchMeta = useMemo(() => {
-    const map = new Map<string, BranchMeta>();
-    for (const m of initialMessages) {
-      if (
-        m.sibling_count != null &&
-        m.sibling_count > 1 &&
-        m.sibling_index != null &&
-        m.sibling_ids?.length
-      ) {
-        map.set(m.id, {
-          sibling_count: m.sibling_count,
-          sibling_index: m.sibling_index,
-          sibling_ids: m.sibling_ids,
-        });
-      }
-    }
-    return map;
-  }, [initialMessages]);
-
-  const wasRegenerating = useRef(false);
-  useEffect(() => {
-    if (status === "ready" && wasRegenerating.current) {
-      wasRegenerating.current = false;
-      // Also sync useChat's messages with the fresh initialMessages
-      // so that message IDs match the branchMeta keys
-      didSwitchRef.current = true;
-      router.refresh();
-    }
-  }, [status, router]);
-
   const handleRegeneration = async (opts?: ChatRequestOptions) => {
-    if (wasRegenerating.current) return;
-    wasRegenerating.current = true;
     await regenerate({
       ...opts,
       body: {
@@ -178,7 +198,9 @@ export default function ChatInterface({
     <ChatSplitView
       document={document}
       onDeleteDoc={handleDeleteDocument}
-      messages={messages}
+      messages={
+        status === "ready" ? convertToUIMessages(activeBranch) : messages
+      }
       input={input}
       handleInputChange={(e) => setInput(e.target.value)}
       handleSubmit={handleSubmit}

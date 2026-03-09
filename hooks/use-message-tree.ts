@@ -19,7 +19,10 @@ export function useMessageTree() {
   const [messageTree, setMessageTree] = useState<MessageTree | null>(null);
 
   // Builds the message tree (LOCAL FUNCTION only)
-  const buildTreeFromDatabase = (allMessages: BranchMessage[]) => {
+  const buildTreeFromDatabase = (
+    allMessages: BranchMessage[],
+    headMessageId: string,
+  ) => {
     if (allMessages.length === 0) return;
 
     const nodes = new Map<string, MessageTreeNode>();
@@ -35,11 +38,7 @@ export function useMessageTree() {
     let rootNode: MessageTreeNode | null = null;
     for (const msg of allMessages) {
       if (msg.parent_id === null) {
-        rootNode = {
-          message: msg,
-          children: [],
-          activeChildIndex: 0,
-        };
+        rootNode = nodes.get(msg.id)!;
       } else {
         const parentNode = nodes.get(msg.parent_id);
         if (parentNode) {
@@ -60,6 +59,8 @@ export function useMessageTree() {
       root: rootNode!,
       node: nodes,
     });
+
+    setActivePath(headMessageId);
   };
 
   // Re-calculates BRANCH META when there is mutation from MESSAGE TREE
@@ -67,13 +68,13 @@ export function useMessageTree() {
     if (!messageTree) return null;
 
     const metaMap = new Map<string, BranchMeta>();
-    for (const node of messageTree?.node.values()) {
+    for (const node of messageTree.node.values()) {
       if (node.children.length > 1) {
         const siblingIds = node.children.map((c) => c.message.id);
         for (let i = 0; i < node.children.length; i++) {
           metaMap.set(node.children[i].message.id, {
             sibling_count: node.children.length,
-            sibling_index: i,
+            sibling_index: i + 1,
             sibling_ids: siblingIds,
           });
         }
@@ -107,8 +108,13 @@ export function useMessageTree() {
       if (message.parent_id) {
         const parentNode = newNodes.get(message.parent_id);
         if (parentNode) {
-          parentNode.children = [...parentNode.children, newNode];
-          parentNode.activeChildIndex = parentNode.children.length - 1;
+          const alreadyChild = parentNode.children.some(
+            (c) => c.message.id === message.id,
+          );
+          if (!alreadyChild) {
+            parentNode.children = [...parentNode.children, newNode];
+            parentNode.activeChildIndex = parentNode.children.length - 1;
+          }
         }
       }
 
@@ -170,6 +176,26 @@ export function useMessageTree() {
     });
   };
 
+  const reconcileIds = (tempId: string, realId: string) => {
+    setMessageTree((prev) => {
+      if (!prev) return prev;
+      const node = prev.node.get(tempId);
+      if (!node) return prev;
+
+      node.message = { ...node.message, id: realId };
+
+      const newNodes = new Map(prev.node);
+      newNodes.delete(tempId);
+      newNodes.set(realId, node);
+
+      for (const child of node.children) {
+        child.message = { ...child.message, parent_id: realId };
+      }
+
+      return { ...prev, node: newNodes };
+    });
+  };
+
   return {
     messageTree,
     buildTreeFromDatabase,
@@ -177,6 +203,6 @@ export function useMessageTree() {
     insertMessage,
     activeBranch,
     switchBranch,
-    setActivePath,
+    reconcileIds,
   };
 }
