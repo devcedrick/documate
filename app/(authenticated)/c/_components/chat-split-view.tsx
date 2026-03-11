@@ -36,6 +36,7 @@ interface ChatSplitViewProps {
   ) => Promise<void>;
   branchMeta?: Map<string, BranchMeta> | null;
   onSwitchBranch?: (messageId: string) => Promise<void>;
+  onStop: () => void;
 }
 
 const ChatSplitView = ({
@@ -50,6 +51,7 @@ const ChatSplitView = ({
   regenerate,
   branchMeta,
   onSwitchBranch,
+  onStop,
 }: ChatSplitViewProps) => {
   if (!document) return;
 
@@ -93,6 +95,8 @@ const ChatSplitView = ({
             handleInputChange={handleInputChange!}
             handleSubmit={handleSubmit!}
             isSendDisabled={disableButton}
+            isStreaming={status !== "ready"}
+            onStop={onStop}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

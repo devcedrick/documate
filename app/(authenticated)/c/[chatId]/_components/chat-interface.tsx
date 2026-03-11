@@ -68,64 +68,70 @@ export default function ChatInterface({
     }
   }, []);
 
-  const { messages, sendMessage, status, setMessages, error, regenerate } =
-    useChat({
-      id: chatId,
-      transport: new DefaultChatTransport({
-        api: "/api/chat",
-      }),
-      onData: ({ data, type }) => {
-        // Handle custom error events from stream
-        const lastMsg = messages[messages.length - 1];
-        const textParts = lastMsg?.parts?.filter(
-          (part) => part.type === "text",
-        ) as { text: string }[];
-        const content = textParts?.map((part) => part.text).join(" ") || "";
+  const {
+    messages,
+    sendMessage,
+    status,
+    setMessages,
+    error,
+    regenerate,
+    stop,
+  } = useChat({
+    id: chatId,
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+    }),
+    onData: ({ data, type }) => {
+      // Handle custom error events from stream
+      const lastMsg = messages[messages.length - 1];
+      const textParts = lastMsg?.parts?.filter(
+        (part) => part.type === "text",
+      ) as { text: string }[];
+      const content = textParts?.map((part) => part.text).join(" ") || "";
 
-        if (type === "data-error") {
-          const errorData = data as { message: string; code: string };
-          console.error("[Chat] Stream error:", errorData);
-          toast.error("Error", { description: errorData.message });
-        }
-        if (type === "data-messages_saved") {
-          const { tempId, userMsg, assistantMsg } = data as {
-            tempId: string;
-            userMsg: { id: string; parent_id: string };
-            assistantMsg: { id: string; parent_id: string };
-          };
-          reconcileIds(tempId, userMsg.id);
-          insertMessage({
-            id: assistantMsg.id,
-            chat_id: chatId,
-            role: "assistant",
-            content: content,
-            created_at: new Date().toISOString(),
-            parent_id: assistantMsg.parent_id,
-          });
-        }
-        if (type === "data-message_regenerated") {
-          console.log("[onData] data-message_regenerated received", data);
-          const { assistantMsg } = data as {
-            assistantMsg: { id: string; parent_id: string };
-          };
-          insertMessage({
-            id: assistantMsg.id,
-            chat_id: chatId,
-            role: "assistant",
-            content: content,
-            created_at: new Date().toISOString(),
-            parent_id: assistantMsg.parent_id,
-          });
-        }
-      },
-      onError: (err) => {
-        console.error("[Chat] Error:", err);
-        toast.error("Error", {
-          description:
-            err.message || "Failed to send message. Please try again.",
+      if (type === "data-error") {
+        const errorData = data as { message: string; code: string };
+        console.error("[Chat] Stream error:", errorData);
+        toast.error("Error", { description: errorData.message });
+      }
+      if (type === "data-messages_saved") {
+        const { tempId, userMsg, assistantMsg } = data as {
+          tempId: string;
+          userMsg: { id: string; parent_id: string };
+          assistantMsg: { id: string; parent_id: string };
+        };
+        reconcileIds(tempId, userMsg.id);
+        insertMessage({
+          id: assistantMsg.id,
+          chat_id: chatId,
+          role: "assistant",
+          content: content,
+          created_at: new Date().toISOString(),
+          parent_id: assistantMsg.parent_id,
         });
-      },
-    });
+      }
+      if (type === "data-message_regenerated") {
+        console.log("[onData] data-message_regenerated received", data);
+        const { assistantMsg } = data as {
+          assistantMsg: { id: string; parent_id: string };
+        };
+        insertMessage({
+          id: assistantMsg.id,
+          chat_id: chatId,
+          role: "assistant",
+          content: content,
+          created_at: new Date().toISOString(),
+          parent_id: assistantMsg.parent_id,
+        });
+      }
+    },
+    onError: (err) => {
+      console.error("[Chat] Error:", err);
+      toast.error("Error", {
+        description: err.message || "Failed to send message. Please try again.",
+      });
+    },
+  });
 
   // Show error toast when error state changes
   useEffect(() => {
@@ -209,6 +215,7 @@ export default function ChatInterface({
       regenerate={handleRegeneration}
       branchMeta={branchMeta}
       onSwitchBranch={handleSwitchBranch}
+      onStop={stop}
     />
   );
 }
